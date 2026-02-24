@@ -18,3 +18,11 @@ build/
 # IDE
 .idea/
 .vscode/
+
+
+# Compiled shared package
+packages/shared/dist/
+packages/shared/src/*.js
+packages/shared/src/*.d.ts
+packages/shared/src/*.js.map
+*.tsbuildinfo
