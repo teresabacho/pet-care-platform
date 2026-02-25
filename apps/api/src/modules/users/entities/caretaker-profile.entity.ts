@@ -6,7 +6,6 @@ import {
     PrimaryGeneratedColumn,
 } from 'typeorm';
 import { User } from '../../auth/entities/user.entity';
-import { ServiceType } from '@pet-care/shared';
 
 @Entity('caretaker_profiles')
 export class CaretakerProfile {
@@ -35,12 +34,8 @@ export class CaretakerProfile {
     })
     hourlyRate: number | null;
 
-    @Column({
-        type: 'simple-array',
-        nullable: true,
-        name: 'service_types',
-    })
-    serviceTypes: ServiceType[] | null;
+    @Column({ type: 'text', array: true, nullable: true, name: 'service_types' })
+    serviceTypes: string[] | null;
 
     @Column({ type: 'float', nullable: true, name: 'service_latitude' })
     serviceLatitude: number | null;
