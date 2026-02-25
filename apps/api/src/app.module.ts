@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from './modules/auth/auth.module';
+import { UsersModule } from './modules/users/users.module';
 
 @Module({
   imports: [
@@ -23,12 +24,12 @@ import { AuthModule } from './modules/auth/auth.module';
         password: config.get('DB_PASSWORD'),
         database: config.get('DB_NAME'),
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
-        synchronize: true, // ⚠️ тільки для розробки! Автоматично створює таблиці
-        logging: true,     // виводить SQL запити в консоль (зручно для дебагу)
+        synchronize: true, // тільки для розробки! Автоматично створює таблиці
       }),
     }),
 
     AuthModule,
+    UsersModule,
   ],
 })
 export class AppModule {}
