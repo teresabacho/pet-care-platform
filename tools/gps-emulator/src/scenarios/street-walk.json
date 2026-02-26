@@ -1,0 +1,22 @@
+[
+  { "lat": 50.4520, "lng": 30.5180, "speed": 1.4, "altitude": 28 },
+  { "lat": 50.4516, "lng": 30.5184, "speed": 1.5, "altitude": 28 },
+  { "lat": 50.4512, "lng": 30.5188, "speed": 1.4, "altitude": 29 },
+  { "lat": 50.4508, "lng": 30.5192, "speed": 1.6, "altitude": 29 },
+  { "lat": 50.4504, "lng": 30.5196, "speed": 1.5, "altitude": 30 },
+  { "lat": 50.4500, "lng": 30.5200, "speed": 1.4, "altitude": 30 },
+  { "lat": 50.4496, "lng": 30.5204, "speed": 1.5, "altitude": 30 },
+  { "lat": 50.4492, "lng": 30.5208, "speed": 1.6, "altitude": 31 },
+  { "lat": 50.4488, "lng": 30.5212, "speed": 1.5, "altitude": 31 },
+  { "lat": 50.4484, "lng": 30.5216, "speed": 1.4, "altitude": 31 },
+  { "lat": 50.4480, "lng": 30.5220, "speed": 1.5, "altitude": 32 },
+  { "lat": 50.4476, "lng": 30.5224, "speed": 1.6, "altitude": 32 },
+  { "lat": 50.4472, "lng": 30.5228, "speed": 1.5, "altitude": 33 },
+  { "lat": 50.4468, "lng": 30.5232, "speed": 1.4, "altitude": 33 },
+  { "lat": 50.4464, "lng": 30.5236, "speed": 1.5, "altitude": 33 },
+  { "lat": 50.4460, "lng": 30.5240, "speed": 1.6, "altitude": 34 },
+  { "lat": 50.4456, "lng": 30.5244, "speed": 1.5, "altitude": 34 },
+  { "lat": 50.4452, "lng": 30.5248, "speed": 1.4, "altitude": 34 },
+  { "lat": 50.4448, "lng": 30.5252, "speed": 1.5, "altitude": 33 },
+  { "lat": 50.4444, "lng": 30.5256, "speed": 1.4, "altitude": 33 }
+]

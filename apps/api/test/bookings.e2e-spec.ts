@@ -166,25 +166,136 @@ describe('Bookings (e2e)', () => {
                 .expect(400);
         });
 
-        it('should start booking (CONFIRMED → IN_PROGRESS) and set actualStart', async () => {
-            const res = await request(app.getHttpServer())
+        it('should reject direct transition to IN_PROGRESS (must go through HANDOVER_PENDING)', async () => {
+            await request(app.getHttpServer())
                 .patch(`/bookings/${bookingId}/status`)
                 .set('Authorization', `Bearer ${caretakerToken}`)
                 .send({ status: BookingStatus.IN_PROGRESS })
-                .expect(200);
-
-            expect(res.body.status).toBe(BookingStatus.IN_PROGRESS);
-            expect(res.body.actualStart).not.toBeNull();
+                .expect(400);
         });
 
-        it('should complete booking (IN_PROGRESS → COMPLETED) and set actualEnd', async () => {
+        it('should move to HANDOVER_PENDING (CONFIRMED → HANDOVER_PENDING)', async () => {
             const res = await request(app.getHttpServer())
                 .patch(`/bookings/${bookingId}/status`)
                 .set('Authorization', `Bearer ${caretakerToken}`)
-                .send({ status: BookingStatus.COMPLETED })
+                .send({ status: BookingStatus.HANDOVER_PENDING })
                 .expect(200);
 
+            expect(res.body.status).toBe(BookingStatus.HANDOVER_PENDING);
+        });
+
+        it('should reject direct status change from HANDOVER_PENDING', async () => {
+            await request(app.getHttpServer())
+                .patch(`/bookings/${bookingId}/status`)
+                .set('Authorization', `Bearer ${caretakerToken}`)
+                .send({ status: BookingStatus.IN_PROGRESS })
+                .expect(400);
+        });
+    });
+
+    describe('POST /bookings/:id/confirm-handover', () => {
+        it('should return 400 when status is not HANDOVER_PENDING', async () => {
+            const otherRes = await request(app.getHttpServer())
+                .post('/bookings')
+                .set('Authorization', `Bearer ${ownerToken}`)
+                .send({ caretakerId, petId, serviceType: ServiceType.PET_SITTING, scheduledStart: '2026-06-01T10:00:00.000Z', scheduledEnd: '2026-06-03T10:00:00.000Z', price: 600 });
+            const otherId = otherRes.body.id;
+
+            await request(app.getHttpServer())
+                .post(`/bookings/${otherId}/confirm-handover`)
+                .set('Authorization', `Bearer ${ownerToken}`)
+                .expect(400);
+        });
+
+        it('should return 401 without token', async () => {
+            await request(app.getHttpServer())
+                .post(`/bookings/${bookingId}/confirm-handover`)
+                .expect(401);
+        });
+
+        it('first confirmation (owner) — status stays HANDOVER_PENDING, flag set', async () => {
+            const res = await request(app.getHttpServer())
+                .post(`/bookings/${bookingId}/confirm-handover`)
+                .set('Authorization', `Bearer ${ownerToken}`)
+                .expect(201);
+
+            expect(res.body.status).toBe(BookingStatus.HANDOVER_PENDING);
+            expect(res.body.handoverConfirmedByOwner).toBe(true);
+            expect(res.body.handoverConfirmedByCaretaker).toBe(false);
+        });
+
+        it('should return 409 when same side confirms twice', async () => {
+            await request(app.getHttpServer())
+                .post(`/bookings/${bookingId}/confirm-handover`)
+                .set('Authorization', `Bearer ${ownerToken}`)
+                .expect(409);
+        });
+
+        it('second confirmation (caretaker) — status becomes IN_PROGRESS, TrackingSession created', async () => {
+            const res = await request(app.getHttpServer())
+                .post(`/bookings/${bookingId}/confirm-handover`)
+                .set('Authorization', `Bearer ${caretakerToken}`)
+                .expect(201);
+
+            expect(res.body.status).toBe(BookingStatus.IN_PROGRESS);
+            expect(res.body.handoverConfirmedByOwner).toBe(true);
+            expect(res.body.handoverConfirmedByCaretaker).toBe(true);
+            expect(res.body.actualStart).not.toBeNull();
+        });
+    });
+
+    describe('POST /bookings/:id/confirm-return', () => {
+        it('should return 400 when status is not RETURN_PENDING', async () => {
+            // bookingId is IN_PROGRESS at this point, not RETURN_PENDING yet
+            await request(app.getHttpServer())
+                .post(`/bookings/${bookingId}/confirm-return`)
+                .set('Authorization', `Bearer ${ownerToken}`)
+                .expect(400);
+        });
+
+        it('should move to RETURN_PENDING (IN_PROGRESS → RETURN_PENDING)', async () => {
+            const res = await request(app.getHttpServer())
+                .patch(`/bookings/${bookingId}/status`)
+                .set('Authorization', `Bearer ${caretakerToken}`)
+                .send({ status: BookingStatus.RETURN_PENDING })
+                .expect(200);
+
+            expect(res.body.status).toBe(BookingStatus.RETURN_PENDING);
+        });
+
+        it('should return 401 without token', async () => {
+            await request(app.getHttpServer())
+                .post(`/bookings/${bookingId}/confirm-return`)
+                .expect(401);
+        });
+
+        it('first confirmation (caretaker) — status stays RETURN_PENDING, flag set', async () => {
+            const res = await request(app.getHttpServer())
+                .post(`/bookings/${bookingId}/confirm-return`)
+                .set('Authorization', `Bearer ${caretakerToken}`)
+                .expect(201);
+
+            expect(res.body.status).toBe(BookingStatus.RETURN_PENDING);
+            expect(res.body.returnConfirmedByCaretaker).toBe(true);
+            expect(res.body.returnConfirmedByOwner).toBe(false);
+        });
+
+        it('should return 409 when same side confirms twice', async () => {
+            await request(app.getHttpServer())
+                .post(`/bookings/${bookingId}/confirm-return`)
+                .set('Authorization', `Bearer ${caretakerToken}`)
+                .expect(409);
+        });
+
+        it('second confirmation (owner) — status becomes COMPLETED', async () => {
+            const res = await request(app.getHttpServer())
+                .post(`/bookings/${bookingId}/confirm-return`)
+                .set('Authorization', `Bearer ${ownerToken}`)
+                .expect(201);
+
             expect(res.body.status).toBe(BookingStatus.COMPLETED);
+            expect(res.body.returnConfirmedByOwner).toBe(true);
+            expect(res.body.returnConfirmedByCaretaker).toBe(true);
             expect(res.body.actualEnd).not.toBeNull();
         });
 

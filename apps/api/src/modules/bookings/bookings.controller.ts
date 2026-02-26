@@ -48,4 +48,22 @@ export class BookingsController {
     ) {
         return this.bookingsService.updateStatus(id, req.user.id, dto);
     }
+
+    @Post(':id/confirm-handover')
+    @ApiOperation({ summary: 'Підтвердити передачу тварини (має підтвердити обидва боки)' })
+    @ApiResponse({ status: 201, description: 'Підтвердження прийнято. Якщо обидва підтвердили — статус переходить в IN_PROGRESS' })
+    @ApiResponse({ status: 400, description: 'Статус букінгу не HANDOVER_PENDING' })
+    @ApiResponse({ status: 409, description: 'Ця сторона вже підтвердила передачу' })
+    confirmHandover(@Param('id') id: string, @Request() req: { user: User }) {
+        return this.bookingsService.confirmHandover(id, req.user.id);
+    }
+
+    @Post(':id/confirm-return')
+    @ApiOperation({ summary: 'Підтвердити повернення тварини (має підтвердити обидва боки)' })
+    @ApiResponse({ status: 201, description: 'Підтвердження прийнято. Якщо обидва підтвердили — статус переходить в COMPLETED' })
+    @ApiResponse({ status: 400, description: 'Статус букінгу не RETURN_PENDING' })
+    @ApiResponse({ status: 409, description: 'Ця сторона вже підтвердила повернення' })
+    confirmReturn(@Param('id') id: string, @Request() req: { user: User }) {
+        return this.bookingsService.confirmReturn(id, req.user.id);
+    }
 }

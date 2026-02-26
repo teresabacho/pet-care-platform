@@ -34,4 +34,12 @@ export class BookingsRepository {
         await this.repo.update(id, { status, ...timestamps });
         return this.repo.findOne({ where: { id }, relations: ['pet', 'owner', 'caretaker'] }) as Promise<Booking>;
     }
+
+    async setConfirmationFlag(
+        id: string,
+        field: 'handoverConfirmedByOwner' | 'handoverConfirmedByCaretaker' | 'returnConfirmedByOwner' | 'returnConfirmedByCaretaker',
+    ): Promise<Booking> {
+        await this.repo.update(id, { [field]: true });
+        return this.repo.findOne({ where: { id }, relations: ['pet', 'owner', 'caretaker'] }) as Promise<Booking>;
+    }
 }

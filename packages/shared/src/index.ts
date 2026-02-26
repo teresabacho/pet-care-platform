@@ -16,15 +16,28 @@ export enum ServiceType {
 // PER_HOUR    — погодинна ставка
 // PER_DAY     — добова ставка (перетримка, пет-сіттінг)
 export enum BookingStatus {
-    PENDING = 'PENDING',
-    CONFIRMED = 'CONFIRMED',
-    IN_PROGRESS = 'IN_PROGRESS',
-    COMPLETED = 'COMPLETED',
-    CANCELLED = 'CANCELLED',
+    PENDING           = 'PENDING',
+    CONFIRMED         = 'CONFIRMED',
+    HANDOVER_PENDING  = 'HANDOVER_PENDING',
+    IN_PROGRESS       = 'IN_PROGRESS',
+    RETURN_PENDING    = 'RETURN_PENDING',
+    COMPLETED         = 'COMPLETED',
+    CANCELLED         = 'CANCELLED',
 }
 
 export enum PriceUnit {
     PER_SESSION = 'PER_SESSION',
     PER_HOUR = 'PER_HOUR',
     PER_DAY = 'PER_DAY',
+}
+
+export enum TrackingSessionStatus {
+    ACTIVE = 'ACTIVE',
+    COMPLETED = 'COMPLETED',
+    CANCELLED = 'CANCELLED',
+}
+
+export enum WalkSegmentStatus {
+    ACTIVE = 'ACTIVE',
+    COMPLETED = 'COMPLETED',
 }

@@ -53,6 +53,18 @@ export class Booking {
     @Column({ type: 'text', nullable: true })
     notes: string | null;
 
+    @Column({ name: 'handover_confirmed_by_owner', default: false })
+    handoverConfirmedByOwner: boolean;
+
+    @Column({ name: 'handover_confirmed_by_caretaker', default: false })
+    handoverConfirmedByCaretaker: boolean;
+
+    @Column({ name: 'return_confirmed_by_owner', default: false })
+    returnConfirmedByOwner: boolean;
+
+    @Column({ name: 'return_confirmed_by_caretaker', default: false })
+    returnConfirmedByCaretaker: boolean;
+
     @CreateDateColumn({ name: 'created_at' })
     createdAt: Date;
 }
