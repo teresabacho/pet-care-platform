@@ -30,9 +30,9 @@ export default function Header() {
                 Замовлення
               </Link>
               <span className="text-gray-400">|</span>
-              <span className="text-gray-700 font-medium">
+              <Link to="/profile" className="text-gray-700 font-medium hover:text-blue-600">
                 {user?.firstName ?? user?.email}
-              </span>
+              </Link>
               <button
                 onClick={handleLogout}
                 className="text-gray-500 hover:text-red-500"

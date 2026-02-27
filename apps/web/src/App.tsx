@@ -4,6 +4,8 @@ import ProtectedRoute from './components/ProtectedRoute'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import HomePage from './pages/HomePage'
+import ProfilePage from './pages/ProfilePage'
+import PetsPage from './pages/PetsPage'
 
 export default function App() {
   return (
@@ -14,8 +16,9 @@ export default function App() {
         <Route element={<Layout />}>
           <Route path="/" element={<HomePage />} />
           <Route element={<ProtectedRoute />}>
-            {/* Protected routes added in Phase 5 */}
-            <Route path="/dashboard" element={<div className="text-center py-8 text-gray-500">Дашборд — буде в Фазі 5</div>} />
+            <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/pets" element={<PetsPage />} />
+            {/* Phase 5.2–5.4: search, bookings, reviews */}
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
