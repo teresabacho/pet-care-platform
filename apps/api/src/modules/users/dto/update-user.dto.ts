@@ -17,7 +17,7 @@ export class UpdateUserDto {
     @IsString()
     phone?: string;
 
-    @ApiPropertyOptional()
+    @ApiPropertyOptional({example: 'https://i.redd.it/qh4lk77bpelc1.jpeg'})
     @IsOptional()
     @IsUrl()
     avatarUrl?: string;

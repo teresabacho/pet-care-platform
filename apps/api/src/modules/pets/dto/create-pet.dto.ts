@@ -28,12 +28,12 @@ export class CreatePetDto {
     @Min(0)
     weight?: number;
 
-    @ApiPropertyOptional()
+    @ApiPropertyOptional({example: 'гарний'})
     @IsOptional()
     @IsString()
     description?: string;
 
-    @ApiPropertyOptional()
+    @ApiPropertyOptional({example: 'https://i.redd.it/qh4lk77bpelc1.jpeg'})
     @IsOptional()
     @IsUrl()
     photoUrl?: string;
