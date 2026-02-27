@@ -6,6 +6,9 @@ import RegisterPage from './pages/RegisterPage'
 import HomePage from './pages/HomePage'
 import ProfilePage from './pages/ProfilePage'
 import PetsPage from './pages/PetsPage'
+import SearchPage from './pages/SearchPage'
+import BookingsPage from './pages/BookingsPage'
+import CaretakerPage from './pages/CaretakerPage'
 
 export default function App() {
   return (
@@ -15,10 +18,13 @@ export default function App() {
         <Route path="/register" element={<RegisterPage />} />
         <Route element={<Layout />}>
           <Route path="/" element={<HomePage />} />
+          <Route path="/search" element={<SearchPage />} />
+          <Route path="/caretaker/:id" element={<CaretakerPage />} />
           <Route element={<ProtectedRoute />}>
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/pets" element={<PetsPage />} />
-            {/* Phase 5.2–5.4: search, bookings, reviews */}
+            <Route path="/bookings" element={<BookingsPage />} />
+            {/* Phase 5.4: reviews */}
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>

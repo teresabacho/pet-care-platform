@@ -1,6 +1,6 @@
 import { apiClient } from './api'
 import type { ServiceType, PriceUnit } from '@pet-care/shared'
-import type { ServiceOffering } from '../types'
+import type { ServiceOffering, SearchResult } from '../types'
 
 interface CreateServiceOfferingDto {
   serviceType: ServiceType
@@ -8,6 +8,13 @@ interface CreateServiceOfferingDto {
   priceUnit?: PriceUnit
   durationMinutes?: number
   description?: string
+}
+
+interface SearchServicesParams {
+  type?: ServiceType
+  lat?: number
+  lng?: number
+  radiusKm?: number
 }
 
 export const serviceOfferingsService = {
@@ -18,6 +25,11 @@ export const serviceOfferingsService = {
 
   async create(dto: CreateServiceOfferingDto): Promise<ServiceOffering> {
     const { data } = await apiClient.post<ServiceOffering>('/services', dto)
+    return data
+  },
+
+  async search(params: SearchServicesParams): Promise<SearchResult[]> {
+    const { data } = await apiClient.get<SearchResult[]>('/services', { params })
     return data
   },
 }

@@ -1,4 +1,4 @@
-import type { UserRole, ServiceType, PriceUnit } from '@pet-care/shared'
+import type { UserRole, ServiceType, PriceUnit, BookingStatus } from '@pet-care/shared'
 
 export interface User {
   id: string
@@ -56,4 +56,61 @@ export interface ServiceOffering {
   durationMinutes: number | null
   description: string | null
   createdAt: string
+}
+
+// Search result: ServiceOffering with nested caretaker + user (from backend join)
+export interface SearchResult extends ServiceOffering {
+  caretaker: CaretakerProfile & {
+    user: User
+  }
+}
+
+export interface Review {
+  id: string
+  authorId: string
+  targetId: string
+  bookingId: string
+  rating: number
+  comment: string | null
+  createdAt: string
+}
+
+export interface Booking {
+  id: string
+  ownerId: string
+  caretakerId: string
+  petId: string
+  serviceType: ServiceType
+  status: BookingStatus
+  scheduledStart: string
+  scheduledEnd: string
+  actualStart: string | null
+  actualEnd: string | null
+  price: string
+  notes: string | null
+  handoverConfirmedByOwner: boolean
+  handoverConfirmedByCaretaker: boolean
+  returnConfirmedByOwner: boolean
+  returnConfirmedByCaretaker: boolean
+  createdAt: string
+  // joined relations (present in detail responses)
+  owner?: User
+  caretaker?: User
+  pet?: Pet
+}
+
+export interface CreateBookingDto {
+  caretakerId: string
+  petId: string
+  serviceType: ServiceType
+  scheduledStart: string
+  scheduledEnd: string
+  price: number
+  notes?: string
+}
+
+export interface ReviewsStats {
+  reviews: Review[]
+  averageRating: number | null
+  totalCount: number
 }
