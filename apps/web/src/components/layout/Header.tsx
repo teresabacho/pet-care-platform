@@ -1,5 +1,27 @@
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
+import { PawPrint, LogIn, LogOut, User, BookOpen, Search, Dog } from 'lucide-react'
 import { useAuthStore } from '../../store/authStore'
+import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
+
+function NavLink({ to, children }: { to: string; children: React.ReactNode }) {
+  const { pathname } = useLocation()
+  const active = pathname === to
+
+  return (
+    <Link
+      to={to}
+      className={cn(
+        'text-sm font-medium px-3 py-2 rounded-md transition-colors',
+        active
+          ? 'text-primary bg-accent'
+          : 'text-muted-foreground hover:text-foreground hover:bg-secondary',
+      )}
+    >
+      {children}
+    </Link>
+  )
+}
 
 export default function Header() {
   const { user, isAuthenticated, logout } = useAuthStore()
@@ -11,46 +33,67 @@ export default function Header() {
   }
 
   return (
-    <header className="bg-white shadow-sm">
-      <nav className="container mx-auto px-4 h-16 flex items-center justify-between">
-        <Link to="/" className="text-xl font-bold text-blue-600">
-          PetCare
+    <header className="sticky top-0 z-50 bg-background border-b border-border shadow-sm">
+      <nav className="max-w-screen-xl mx-auto px-6 h-16 flex items-center justify-between gap-6">
+        {/* Logo */}
+        <Link to="/" className="flex items-center gap-2 shrink-0">
+          <PawPrint className="size-5 text-primary" />
+          <span className="font-bold text-base text-foreground tracking-tight">PetCare</span>
         </Link>
 
-        <div className="flex items-center gap-4 text-sm">
+        {/* Centre nav links */}
+        <div className="hidden md:flex items-center gap-1">
+          <NavLink to="/search">
+            <span className="flex items-center gap-1.5">
+              <Search className="size-3.5" />
+              Знайти доглядальника
+            </span>
+          </NavLink>
+          {isAuthenticated && (
+            <>
+              <NavLink to="/pets">
+                <span className="flex items-center gap-1.5">
+                  <Dog className="size-3.5" />
+                  Мої тварини
+                </span>
+              </NavLink>
+              <NavLink to="/bookings">
+                <span className="flex items-center gap-1.5">
+                  <BookOpen className="size-3.5" />
+                  Замовлення
+                </span>
+              </NavLink>
+            </>
+          )}
+        </div>
+
+        {/* Right side */}
+        <div className="flex items-center gap-2 shrink-0">
           {isAuthenticated ? (
             <>
-              <Link to="/search" className="text-gray-600 hover:text-blue-600">
-                Пошук
-              </Link>
-              <Link to="/pets" className="text-gray-600 hover:text-blue-600">
-                Мої тварини
-              </Link>
-              <Link to="/bookings" className="text-gray-600 hover:text-blue-600">
-                Замовлення
-              </Link>
-              <span className="text-gray-400">|</span>
-              <Link to="/profile" className="text-gray-700 font-medium hover:text-blue-600">
+              <Link
+                to="/profile"
+                className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-2"
+              >
+                <User className="size-4" />
                 {user?.firstName ?? user?.email}
               </Link>
-              <button
-                onClick={handleLogout}
-                className="text-gray-500 hover:text-red-500"
-              >
+              <Button variant="outline" size="sm" onClick={handleLogout}>
+                <LogOut className="size-3.5 mr-1.5" />
                 Вийти
-              </button>
+              </Button>
             </>
           ) : (
             <>
-              <Link to="/login" className="text-gray-600 hover:text-blue-600">
-                Увійти
-              </Link>
-              <Link
-                to="/register"
-                className="bg-blue-600 text-white px-4 py-1.5 rounded-lg hover:bg-blue-700"
-              >
-                Реєстрація
-              </Link>
+              <Button variant="ghost" size="sm" asChild>
+                <Link to="/login">
+                  <LogIn className="size-3.5 mr-1.5" />
+                  Увійти
+                </Link>
+              </Button>
+              <Button size="sm" asChild>
+                <Link to="/register">Реєстрація</Link>
+              </Button>
             </>
           )}
         </div>
