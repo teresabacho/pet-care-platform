@@ -1,68 +1,492 @@
-import { Link } from 'react-router-dom'
-import { useAuthStore } from '../store/authStore'
+import { useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import { TileSelectDropdown, type TileOption } from '@/components/ui/tile-select-dropdown'
+import { CitySelectDropdown } from '@/components/ui/city-select-dropdown'
 
-export default function HomePage() {
-  const { isAuthenticated, user } = useAuthStore()
+const PET_OPTIONS: TileOption[] = [
+  { value: 'dog', label: 'Собака', emoji: '🐕' },
+  { value: 'cat', label: 'Кіт', emoji: '🐈' },
+  { value: 'rodent', label: 'Гризун', emoji: '🐹' },
+  { value: 'bird', label: 'Птах', emoji: '🦜' },
+  { value: 'other', label: 'Інша тварина', emoji: '🐾' },
+]
 
-  if (isAuthenticated) {
-    return (
-      <div>
-        <h1 className="text-2xl font-bold mb-6">
-          Привіт, {user?.firstName ?? user?.email}! 👋
-        </h1>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Link
-            to="/search"
-            className="bg-white p-6 rounded-xl shadow hover:shadow-md transition-shadow border border-gray-100"
-          >
-            <div className="text-3xl mb-3">🔍</div>
-            <h2 className="font-semibold text-lg mb-1">Знайти виконавця</h2>
-            <p className="text-gray-500 text-sm">Пошук доглядальників поблизу</p>
-          </Link>
-          <Link
-            to="/bookings"
-            className="bg-white p-6 rounded-xl shadow hover:shadow-md transition-shadow border border-gray-100"
-          >
-            <div className="text-3xl mb-3">📋</div>
-            <h2 className="font-semibold text-lg mb-1">Мої замовлення</h2>
-            <p className="text-gray-500 text-sm">Поточні та минулі бронювання</p>
-          </Link>
-          <Link
-            to="/pets"
-            className="bg-white p-6 rounded-xl shadow hover:shadow-md transition-shadow border border-gray-100"
-          >
-            <div className="text-3xl mb-3">🐾</div>
-            <h2 className="font-semibold text-lg mb-1">Мої тварини</h2>
-            <p className="text-gray-500 text-sm">Профілі ваших улюбленців</p>
-          </Link>
-        </div>
-      </div>
-    )
+const SERVICE_OPTIONS: TileOption[] = [
+  { value: 'boarding', label: 'Перетримка у доглядальника', emoji: '🏡' },
+  { value: 'sitting', label: 'Догляд вдома', emoji: '🏠' },
+  { value: 'walking', label: 'Вигул улюбленця', emoji: '🦮' },
+  { value: 'daycare', label: 'Денна сидівка', emoji: '☀️' },
+  { value: 'grooming', label: 'Грумінг', emoji: '✂️' },
+]
+
+function HeroSection() {
+  const navigate = useNavigate()
+  const [pet, setPet] = useState('')
+  const [service, setService] = useState('')
+  const [city, setCity] = useState('')
+
+  function handleSearch() {
+    const params = new URLSearchParams()
+    if (pet) params.set('pet', pet)
+    if (service) params.set('service', service)
+    if (city) params.set('city', city)
+    navigate(`/search?${params.toString()}`)
   }
 
   return (
-    <div className="text-center py-16">
-      <div className="text-6xl mb-6">🐾</div>
-      <h1 className="text-4xl font-bold mb-4 text-gray-800">
-        PetCare — Догляд за тваринами
-      </h1>
-      <p className="text-gray-500 text-lg mb-8 max-w-md mx-auto">
-        Знайдіть надійного доглядальника для вашого улюбленця поблизу
-      </p>
-      <div className="flex justify-center gap-4">
+    <section className="relative overflow-hidden">
+      {/* background image */}
+      <div
+        className="absolute inset-0 bg-cover bg-center opacity-30 pointer-events-none rounded-xl mx-8 mt-4"
+        style={{ backgroundImage: 'url(/hero-bg.png)', top: 80, bottom: 0 }}
+      />
+
+      <div className="relative max-w-7xl mx-auto px-6 pt-20 pb-0 text-center">
+        <h1 className="text-5xl font-bold text-zinc-900 leading-tight max-w-2xl mx-auto">
+          Дбайливі люди для ваших пухнастих друзів
+        </h1>
+        <p className="mt-6 text-2xl text-zinc-700 max-w-3xl mx-auto leading-snug">
+          Знайдіть перевіреного доглядальника чи вигульника — вручну або за допомогою штучного інтелекту
+        </p>
+      </div>
+
+      {/* search card */}
+      <div className="relative max-w-5xl mx-auto mt-10 mb-0 px-6">
+        <div className="bg-slate-200 rounded-lg px-10 py-8 flex flex-col gap-6 items-center">
+          {/* fields row */}
+          <div className="flex flex-col md:flex-row gap-4 w-full">
+            <TileSelectDropdown
+              label="Для кого шукаємо помічника?"
+              placeholder="Виберіть улюбленця"
+              options={PET_OPTIONS}
+              value={pet}
+              onChange={setPet}
+              className="flex-1"
+            />
+
+            <TileSelectDropdown
+              label="Яка послуга потрібна?"
+              placeholder="Оберіть послугу"
+              options={SERVICE_OPTIONS}
+              value={service}
+              onChange={setService}
+              className="flex-1"
+            />
+
+            <CitySelectDropdown
+              label="У якому місті потрібна допомога?"
+              placeholder="Оберіть місто чи адресу"
+              value={city}
+              onChange={setCity}
+              className="flex-1"
+            />
+
+            <div className="flex-1 flex flex-col gap-2">
+              <label className="text-sm font-medium text-zinc-900">На які дати потрібна допомога?</label>
+              <input
+                type="text"
+                placeholder="Оберіть дати"
+                className="bg-white border border-zinc-200 rounded-md h-10 px-3 text-sm text-zinc-500 w-full"
+              />
+            </div>
+          </div>
+
+          {/* buttons */}
+          <div className="flex flex-col items-center gap-3 w-full">
+            <button
+              onClick={handleSearch}
+              className="bg-zinc-900 text-white rounded-md h-10 px-6 text-sm font-medium w-80 hover:bg-zinc-800 transition-colors"
+            >
+              Шукати
+            </button>
+
+            <span className="text-sm font-medium text-zinc-900">або спробуйте</span>
+
+            <div className="relative w-80">
+              <button
+                onClick={() => navigate('/search?ai=1')}
+                className="bg-purple-500 text-white rounded-md h-10 px-6 text-sm font-medium w-full hover:bg-purple-600 transition-colors"
+              >
+                Підібрати ідеального доглядальника
+              </button>
+              <span className="absolute -top-3 -left-4 rotate-[-2.66deg] bg-zinc-100 border border-transparent rounded-full px-2.5 py-0.5 text-xs font-medium text-zinc-900 flex items-center gap-1 whitespace-nowrap">
+                ⭐ Розумний підбір
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function HowItWorksSection() {
+  const steps = [
+    {
+      icon: '📋',
+      title: 'Заповнення анкети',
+      desc: 'Ви швидко заповнюєте коротку анкету з інформацією про вашу тварину та ваші побажання',
+    },
+    {
+      icon: '🤖',
+      title: 'Аналіз даних ШІ',
+      desc: 'Наш штучний інтелект миттєво аналізує введені дані та порівнює їх з профілями доглядальників',
+    },
+    {
+      icon: '⚡',
+      title: 'Швидкий підбір',
+      desc: 'Система формує персональний рейтинг доглядальників, які найкраще підходять саме вам',
+    },
+    {
+      icon: '📅',
+      title: 'Бронювання доглядальника',
+      desc: 'Ви обираєте зручного фахівця та оформлюєте замовлення в кілька кліків',
+    },
+  ]
+
+  return (
+    <section className="max-w-5xl mx-auto px-6 py-20">
+      <div className="text-center mb-14">
+        <h2 className="text-4xl font-bold text-zinc-900">Як працює розумний підбір?</h2>
+        <p className="mt-4 text-base text-zinc-500 max-w-lg mx-auto">
+          Пояснюємо, як за 4 кроки штучний інтелект знаходить ідеального доглядальника:
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
+        {steps.map(step => (
+          <div key={step.title} className="flex flex-col items-center text-center gap-4">
+            <div className="w-10 h-10 flex items-center justify-center rounded-md bg-white border border-zinc-200 shadow-sm text-xl">
+              {step.icon}
+            </div>
+            <div className="flex flex-col gap-2">
+              <p className="font-semibold text-zinc-900 text-base">{step.title}</p>
+              <p className="text-sm text-zinc-500 leading-snug">{step.desc}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function BenefitsSection() {
+  const benefits = [
+    'Перевірені доглядальники',
+    'Відгуки реальних власників',
+    'GPS-трекінг під час прогулянки',
+    'Зручне онлайн-бронювання',
+    'Підтримка 24/7',
+    'Гарантія якості послуг',
+  ]
+
+  return (
+    <section className="bg-zinc-50 py-20">
+      <div className="max-w-5xl mx-auto px-6 flex flex-col md:flex-row gap-12 items-center">
+        <div className="flex-1">
+          <h2 className="text-4xl font-bold text-zinc-900 mb-4">Що ви отримуєте з PawMate</h2>
+          <p className="text-zinc-500 text-base mb-8 max-w-sm">
+            Ми дбаємо про вашого улюбленця так само, як дбаєте ви. Турботливі люди, підтверджені відгуки, надійний сервіс.
+          </p>
+          <ul className="flex flex-col gap-3">
+            {benefits.map(b => (
+              <li key={b} className="flex items-center gap-3 text-zinc-700 text-sm">
+                <span className="w-5 h-5 flex-shrink-0 text-zinc-900">✓</span>
+                {b}
+              </li>
+            ))}
+          </ul>
+          <Link
+            to="/register"
+            className="mt-8 inline-block bg-zinc-900 text-white rounded-md px-6 py-2.5 text-sm font-medium hover:bg-zinc-800 transition-colors"
+          >
+            Спробувати безкоштовно
+          </Link>
+        </div>
+
+        <div className="flex-1 bg-white rounded-xl border border-zinc-200 p-6 shadow-sm">
+          <div className="bg-zinc-100 rounded-lg h-48 mb-4 flex items-center justify-center text-4xl">🐾</div>
+          <p className="font-semibold text-zinc-900 text-sm mb-1">Марія Коваленко</p>
+          <p className="text-zinc-500 text-xs mb-3">Доглядальник • Київ</p>
+          <div className="flex items-center gap-1 text-yellow-400 text-sm mb-3">
+            {'★'.repeat(5)}
+            <span className="text-zinc-500 text-xs ml-1">4.9 (127 відгуків)</span>
+          </div>
+          <p className="text-zinc-500 text-xs leading-relaxed">
+            Досвідчений доглядальник із 5-річним стажем. Люблю тварин і ставлюся до кожного улюбленця як до власного.
+          </p>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function ServiceCardsSection() {
+  const services = [
+    {
+      emoji: '🏡',
+      title: 'Догляд вдома',
+      desc: 'Доглядальник приходить до вас додому і доглядає за вашим улюбленцем у звичному для нього середовищі.',
+      badge: 'Найпопулярніше',
+    },
+    {
+      emoji: '🦮',
+      title: 'Денна сидівка',
+      desc: 'Ваш улюбленець проводить день у доглядальника в теплій домашній атмосфері, поки ви на роботі.',
+      badge: null,
+    },
+    {
+      emoji: '🌙',
+      title: 'Нічна передержка',
+      desc: 'Ваш улюбленець залишається у перевіреного доглядальника на ніч або кілька днів.',
+      badge: null,
+    },
+  ]
+
+  return (
+    <section className="max-w-5xl mx-auto px-6 py-20">
+      <div className="text-center mb-14">
+        <h2 className="text-4xl font-bold text-zinc-900">
+          Ваш улюбленець у добрих руках — від першого кліку до повернення додому
+        </h2>
+        <p className="mt-4 text-base text-zinc-500 max-w-xl mx-auto">
+          Підберіть послугу, яка підходить саме вам. Усі доглядальники на PawMate перевірені та мають реальні відгуки.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {services.map(s => (
+          <div key={s.title} className="bg-white border border-zinc-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+            <div className="bg-zinc-100 h-40 flex items-center justify-center text-5xl">{s.emoji}</div>
+            <div className="p-5">
+              <div className="flex items-center gap-2 mb-2">
+                <h3 className="font-semibold text-zinc-900 text-base">{s.title}</h3>
+                {s.badge && (
+                  <span className="bg-purple-100 text-purple-700 text-xs font-medium px-2 py-0.5 rounded-full">
+                    {s.badge}
+                  </span>
+                )}
+              </div>
+              <p className="text-zinc-500 text-sm leading-relaxed">{s.desc}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function TestimonialsSection() {
+  const testimonials = [
+    {
+      name: 'Олена Ткач',
+      role: 'Власниця такси Тара',
+      text: 'Скористалась сервісом вперше і залишилась у захваті. Доглядальниця Марія була уважна та турботлива. Тара поверталась задоволена та весела!',
+      rating: 5,
+    },
+    {
+      name: 'Дмитро Савченко',
+      role: 'Власник двох котів',
+      text: 'Чудовий сервіс! Зручне бронювання, GPS-трекінг прогулянок і чесні відгуки. Нарешті знайшов доглядальника, якому можна довіряти.',
+      rating: 5,
+    },
+    {
+      name: 'Ліна Мороз',
+      role: 'Власниця шпіца Бублика',
+      text: 'Скористалась розумним підбором і дуже задоволена результатом. Бублик в захваті від нового вигульника. Рекомендую всім!',
+      rating: 5,
+    },
+  ]
+
+  return (
+    <section className="bg-zinc-50 py-20">
+      <div className="max-w-5xl mx-auto px-6">
+        <h2 className="text-4xl font-bold text-zinc-900 text-center mb-4">
+          Інші власники вже довірили нам своїх улюбленців
+        </h2>
+        <p className="text-zinc-500 text-center text-base mb-12">
+          Реальні відгуки від власників, які скористались PawMate
+        </p>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {testimonials.map(t => (
+            <div key={t.name} className="bg-white rounded-xl border border-zinc-200 p-6 shadow-sm">
+              <div className="flex items-center gap-1 text-yellow-400 text-sm mb-4">
+                {'★'.repeat(t.rating)}
+              </div>
+              <p className="text-zinc-700 text-sm leading-relaxed mb-5">"{t.text}"</p>
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-full bg-zinc-200 flex items-center justify-center text-base">
+                  🐾
+                </div>
+                <div>
+                  <p className="font-semibold text-zinc-900 text-sm">{t.name}</p>
+                  <p className="text-zinc-500 text-xs">{t.role}</p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function FaqSection() {
+  const [open, setOpen] = useState<number | null>(null)
+
+  const items = [
+    {
+      q: 'Що таке PawMate?',
+      a: 'PawMate — це платформа, яка з\'єднує власників домашніх тварин із перевіреними доглядальниками та вигульниками. Ми допомагаємо знайти надійного фахівця швидко та безпечно.',
+    },
+    {
+      q: 'Як працює розумний підбір ШІ?',
+      a: 'Ви заповнюєте коротку анкету про свою тварину та побажання. Наш ШІ аналізує ці дані і підбирає доглядальників, які найкраще підходять саме вам.',
+    },
+    {
+      q: 'Чи перевірені доглядальники на платформі?',
+      a: 'Так. Усі доглядальники проходять верифікацію та мають підтверджені відгуки від реальних власників.',
+    },
+    {
+      q: 'Що робити, якщо щось пішло не так?',
+      a: 'Наша служба підтримки доступна 24/7. Напишіть нам або зателефонуйте — ми допоможемо вирішити будь-яку ситуацію.',
+    },
+    {
+      q: 'Як здійснюється оплата?',
+      a: 'Оплата проводиться безпечно через платформу після підтвердження бронювання. Ми підтримуємо картки Visa, Mastercard та інші популярні методи.',
+    },
+  ]
+
+  return (
+    <section className="max-w-3xl mx-auto px-6 py-20">
+      <h2 className="text-4xl font-bold text-zinc-900 text-center mb-12">Часті запитання</h2>
+
+      <div className="flex flex-col divide-y divide-zinc-200">
+        {items.map((item, i) => (
+          <div key={i} className="py-4">
+            <button
+              onClick={() => setOpen(open === i ? null : i)}
+              className="flex items-center justify-between w-full text-left gap-4"
+            >
+              <span className="font-medium text-zinc-900 text-sm">{item.q}</span>
+              <span className="text-zinc-400 text-lg flex-shrink-0">{open === i ? '−' : '+'}</span>
+            </button>
+            {open === i && (
+              <p className="mt-3 text-sm text-zinc-500 leading-relaxed">{item.a}</p>
+            )}
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-12 bg-zinc-50 rounded-xl p-8 text-center">
+        <h3 className="font-semibold text-zinc-900 text-lg mb-2">Залишилось питання?</h3>
+        <p className="text-zinc-500 text-sm mb-5">Напишіть нам — відповімо протягом кількох хвилин</p>
         <Link
           to="/register"
-          className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-medium"
+          className="inline-block bg-zinc-900 text-white rounded-md px-6 py-2.5 text-sm font-medium hover:bg-zinc-800 transition-colors"
         >
-          Почати
-        </Link>
-        <Link
-          to="/login"
-          className="border border-blue-600 text-blue-600 px-6 py-3 rounded-lg hover:bg-blue-50 font-medium"
-        >
-          Увійти
+          Зв'язатись з нами
         </Link>
       </div>
+    </section>
+  )
+}
+
+function ContactSection() {
+  const [email, setEmail] = useState('')
+
+  return (
+    <section className="bg-zinc-50 py-20">
+      <div className="max-w-5xl mx-auto px-6 flex flex-col md:flex-row gap-12">
+        <div className="flex-1">
+          <h2 className="text-3xl font-bold text-zinc-900 mb-4">Залишайтесь з нами</h2>
+          <p className="text-zinc-500 text-sm mb-6 max-w-sm">
+            Отримуйте корисні поради з догляду за тваринами та ексклюзивні пропозиції PawMate першими.
+          </p>
+          <div className="flex gap-2 max-w-sm">
+            <input
+              type="email"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              placeholder="Ваш email"
+              className="flex-1 border border-zinc-200 rounded-md h-10 px-3 text-sm bg-white"
+            />
+            <button
+              onClick={() => setEmail('')}
+              className="bg-zinc-900 text-white rounded-md px-4 text-sm font-medium hover:bg-zinc-800 transition-colors h-10"
+            >
+              Підписатись
+            </button>
+          </div>
+        </div>
+
+        <div className="flex-1 flex flex-col gap-4 text-sm text-zinc-600">
+          <h3 className="font-semibold text-zinc-900">Наші контакти</h3>
+          <p>📧 hello@pawmate.ua</p>
+          <p>📞 +38 (073) 000-00-00</p>
+          <p>📍 Київ, Україна</p>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function FooterSection() {
+  return (
+    <footer className="bg-zinc-900 text-zinc-400 py-12">
+      <div className="max-w-5xl mx-auto px-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-10">
+          <div>
+            <p className="font-bold text-white text-base mb-4">PawMate</p>
+            <p className="text-xs leading-relaxed">Турботливий сервіс для ваших улюбленців</p>
+          </div>
+          <div>
+            <p className="font-semibold text-zinc-300 text-sm mb-3">Сервіс</p>
+            <ul className="flex flex-col gap-2 text-xs">
+              <li><Link to="/search" className="hover:text-white transition-colors">Знайти доглядальника</Link></li>
+              <li><Link to="/search" className="hover:text-white transition-colors">Знайти вигульника</Link></li>
+              <li><Link to="/register" className="hover:text-white transition-colors">Стати доглядальником</Link></li>
+            </ul>
+          </div>
+          <div>
+            <p className="font-semibold text-zinc-300 text-sm mb-3">Компанія</p>
+            <ul className="flex flex-col gap-2 text-xs">
+              <li><Link to="/" className="hover:text-white transition-colors">Про нас</Link></li>
+              <li><Link to="/" className="hover:text-white transition-colors">Блог</Link></li>
+              <li><Link to="/" className="hover:text-white transition-colors">Кар'єра</Link></li>
+            </ul>
+          </div>
+          <div>
+            <p className="font-semibold text-zinc-300 text-sm mb-3">Підтримка</p>
+            <ul className="flex flex-col gap-2 text-xs">
+              <li><Link to="/" className="hover:text-white transition-colors">Часті питання</Link></li>
+              <li><Link to="/" className="hover:text-white transition-colors">Умови використання</Link></li>
+              <li><Link to="/" className="hover:text-white transition-colors">Конфіденційність</Link></li>
+            </ul>
+          </div>
+        </div>
+        <div className="border-t border-zinc-800 pt-6 text-xs text-center">
+          © 2024 PawMate. Всі права захищено.
+        </div>
+      </div>
+    </footer>
+  )
+}
+
+// ── Main export ──────────────────────────────────────────────────────────────
+
+export default function HomePage() {
+  return (
+    <div className="bg-white">
+      <HeroSection />
+      <HowItWorksSection />
+      <BenefitsSection />
+      <ServiceCardsSection />
+      <TestimonialsSection />
+      <FaqSection />
+      <ContactSection />
+      <FooterSection />
     </div>
   )
 }

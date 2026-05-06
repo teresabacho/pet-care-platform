@@ -1,55 +1,101 @@
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../../store/authStore'
+import { buttonVariants } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Bell, Heart, ChevronDown } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 export default function Header() {
   const { user, isAuthenticated, logout } = useAuthStore()
   const navigate = useNavigate()
 
+  const initials = user?.firstName
+    ? user.firstName[0].toUpperCase()
+    : (user?.email?.[0]?.toUpperCase() ?? '?')
+
   const handleLogout = () => {
     logout()
-    navigate('/login')
+    navigate('/')
   }
 
   return (
-    <header className="bg-white shadow-sm">
-      <nav className="container mx-auto px-4 h-16 flex items-center justify-between">
-        <Link to="/" className="text-xl font-bold text-blue-600">
-          PetCare
+    <header className="bg-white border-b border-zinc-200">
+      <nav className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+        <Link to="/" className="text-base font-bold text-zinc-900 tracking-tight">
+          PawMate
         </Link>
 
-        <div className="flex items-center gap-4 text-sm">
+        <div className="flex items-center gap-1">
           {isAuthenticated ? (
             <>
-              <Link to="/search" className="text-gray-600 hover:text-blue-600">
-                Пошук
-              </Link>
-              <Link to="/pets" className="text-gray-600 hover:text-blue-600">
-                Мої тварини
-              </Link>
-              <Link to="/bookings" className="text-gray-600 hover:text-blue-600">
-                Замовлення
-              </Link>
-              <span className="text-gray-400">|</span>
-              <Link to="/profile" className="text-gray-700 font-medium hover:text-blue-600">
-                {user?.firstName ?? user?.email}
-              </Link>
-              <button
-                onClick={handleLogout}
-                className="text-gray-500 hover:text-red-500"
+              <Link
+                to="/favorites"
+                className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'gap-1.5 text-zinc-600 font-medium')}
               >
-                Вийти
-              </button>
+                <Heart className="w-4 h-4" />
+                Уподобані виконавці
+              </Link>
+
+              <Link
+                to="/messages"
+                className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'gap-1.5 text-zinc-600 font-medium')}
+              >
+                <Bell className="w-4 h-4" />
+                Повідомлення
+              </Link>
+
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'gap-2 font-medium')}
+                >
+                  <Avatar size="sm">
+                    <AvatarFallback className="text-xs bg-zinc-900 text-white">
+                      {initials}
+                    </AvatarFallback>
+                  </Avatar>
+                  Профіль
+                  <ChevronDown className="w-3.5 h-3.5 text-zinc-500" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuItem onClick={() => navigate('/profile')}>
+                    Мій акаунт
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate('/bookings')}>
+                    Мої замовлення
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate('/pets')}>
+                    Мої тварини
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={handleLogout}
+                    className="text-red-600 focus:text-red-600"
+                  >
+                    Вийти
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </>
           ) : (
             <>
-              <Link to="/login" className="text-gray-600 hover:text-blue-600">
+              <Link
+                to="/login"
+                className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'font-medium')}
+              >
                 Увійти
               </Link>
               <Link
                 to="/register"
-                className="bg-blue-600 text-white px-4 py-1.5 rounded-lg hover:bg-blue-700"
+                className={cn(buttonVariants({ size: 'sm' }), 'bg-zinc-900 hover:bg-zinc-800 text-white font-medium')}
               >
-                Реєстрація
+                Зареєструватися
               </Link>
             </>
           )}
