@@ -9,6 +9,7 @@ import PetsPage from './pages/PetsPage'
 import SearchPage from './pages/SearchPage'
 import BookingsPage from './pages/BookingsPage'
 import CaretakerPage from './pages/CaretakerPage'
+import ComingSoonPage from './pages/ComingSoonPage'
 
 export default function App() {
   return (
@@ -20,11 +21,12 @@ export default function App() {
           <Route path="/" element={<HomePage />} />
           <Route path="/search" element={<SearchPage />} />
           <Route path="/caretaker/:id" element={<CaretakerPage />} />
+          <Route path="/favorites" element={<ComingSoonPage title="Уподобані виконавці" />} />
+          <Route path="/messages" element={<ComingSoonPage title="Повідомлення" />} />
           <Route element={<ProtectedRoute />}>
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/pets" element={<PetsPage />} />
             <Route path="/bookings" element={<BookingsPage />} />
-            {/* Phase 5.4: reviews */}
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
