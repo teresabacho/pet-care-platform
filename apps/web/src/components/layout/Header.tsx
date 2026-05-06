@@ -1,99 +1,102 @@
-import { Link, useNavigate, useLocation } from 'react-router-dom'
-import { PawPrint, LogIn, LogOut, User, BookOpen, Search, Dog } from 'lucide-react'
+import { Link, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../../store/authStore'
-import { Button } from '@/components/ui/button'
+import { buttonVariants } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Bell, Heart, ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
-
-function NavLink({ to, children }: { to: string; children: React.ReactNode }) {
-  const { pathname } = useLocation()
-  const active = pathname === to
-
-  return (
-    <Link
-      to={to}
-      className={cn(
-        'text-sm font-medium px-3 py-2 rounded-md transition-colors',
-        active
-          ? 'text-primary bg-accent'
-          : 'text-muted-foreground hover:text-foreground hover:bg-secondary',
-      )}
-    >
-      {children}
-    </Link>
-  )
-}
 
 export default function Header() {
   const { user, isAuthenticated, logout } = useAuthStore()
   const navigate = useNavigate()
 
+  const initials = user?.firstName
+    ? user.firstName[0].toUpperCase()
+    : (user?.email?.[0]?.toUpperCase() ?? '?')
+
   const handleLogout = () => {
     logout()
-    navigate('/login')
+    navigate('/')
   }
 
   return (
-    <header className="sticky top-0 z-50 bg-background border-b border-border shadow-sm">
-      <nav className="max-w-screen-xl mx-auto px-6 h-16 flex items-center justify-between gap-6">
-        {/* Logo */}
-        <Link to="/" className="flex items-center gap-2 shrink-0">
-          <PawPrint className="size-5 text-primary" />
-          <span className="font-bold text-base text-foreground tracking-tight">PetCare</span>
+    <header className="bg-white border-b border-zinc-200">
+      <nav className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+        <Link to="/" className="text-base font-bold text-zinc-900 tracking-tight">
+          PawMate
         </Link>
 
-        {/* Centre nav links */}
-        <div className="hidden md:flex items-center gap-1">
-          <NavLink to="/search">
-            <span className="flex items-center gap-1.5">
-              <Search className="size-3.5" />
-              Знайти доглядальника
-            </span>
-          </NavLink>
-          {isAuthenticated && (
-            <>
-              <NavLink to="/pets">
-                <span className="flex items-center gap-1.5">
-                  <Dog className="size-3.5" />
-                  Мої тварини
-                </span>
-              </NavLink>
-              <NavLink to="/bookings">
-                <span className="flex items-center gap-1.5">
-                  <BookOpen className="size-3.5" />
-                  Замовлення
-                </span>
-              </NavLink>
-            </>
-          )}
-        </div>
-
-        {/* Right side */}
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-1">
           {isAuthenticated ? (
             <>
               <Link
-                to="/profile"
-                className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-2"
+                to="/favorites"
+                className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'gap-1.5 text-zinc-600 font-medium')}
               >
-                <User className="size-4" />
-                {user?.firstName ?? user?.email}
+                <Heart className="w-4 h-4" />
+                Уподобані виконавці
               </Link>
-              <Button variant="outline" size="sm" onClick={handleLogout}>
-                <LogOut className="size-3.5 mr-1.5" />
-                Вийти
-              </Button>
+
+              <Link
+                to="/messages"
+                className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'gap-1.5 text-zinc-600 font-medium')}
+              >
+                <Bell className="w-4 h-4" />
+                Повідомлення
+              </Link>
+
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'gap-2 font-medium')}
+                >
+                  <Avatar size="sm">
+                    <AvatarFallback className="text-xs bg-zinc-900 text-white">
+                      {initials}
+                    </AvatarFallback>
+                  </Avatar>
+                  Профіль
+                  <ChevronDown className="w-3.5 h-3.5 text-zinc-500" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuItem onClick={() => navigate('/profile')}>
+                    Мій акаунт
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate('/bookings')}>
+                    Мої замовлення
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate('/pets')}>
+                    Мої тварини
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={handleLogout}
+                    className="text-red-600 focus:text-red-600"
+                  >
+                    Вийти
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </>
           ) : (
             <>
-              <Button variant="ghost" size="sm" asChild>
-                <Link to="/login">
-                  <LogIn className="size-3.5 mr-1.5" />
-                  Увійти
-                </Link>
-              </Button>
-              <Button size="sm" asChild>
-                <Link to="/register">Реєстрація</Link>
-              </Button>
+              <Link
+                to="/login"
+                className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'font-medium')}
+              >
+                Увійти
+              </Link>
+              <Link
+                to="/register"
+                className={cn(buttonVariants({ size: 'sm' }), 'bg-zinc-900 hover:bg-zinc-800 text-white font-medium')}
+              >
+                Зареєструватися
+              </Link>
             </>
           )}
         </div>
