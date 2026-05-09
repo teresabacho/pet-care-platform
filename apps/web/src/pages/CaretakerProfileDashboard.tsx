@@ -412,7 +412,7 @@ export default function CaretakerProfileDashboard() {
           if (!o) setDeletingService(null)
         }}
         title="Видалити послугу?"
-        description="Це назавжди видалить послугу разом з усіма тарифами, надбавками та аддонами. Активні замовлення цієї послуги не постраждають."
+        description="Це назавжди видалить послугу разом з усіма тарифами, надбавками за розмір та додатковими послугами. Активні замовлення цієї послуги не постраждають."
         confirmLabel="Видалити"
         variant="destructive"
         onConfirm={handleConfirmDelete}

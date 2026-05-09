@@ -110,9 +110,9 @@ const EMPTY_POLICY: PolicyState = {
 const TABS = [
   { id: 'general', label: 'Загальне' },
   { id: 'tiers', label: 'Тарифи' },
-  { id: 'sizes', label: 'Розмір' },
-  { id: 'addons', label: 'Аддони' },
   { id: 'policy', label: 'Правила' },
+  { id: 'sizes', label: 'Ціна за розміром' },
+  { id: 'addons', label: 'Додаткові послуги' },
 ] as const
 type TabId = (typeof TABS)[number]['id']
 
@@ -903,7 +903,7 @@ function AddonsPane({ addons, setAddons }: AddonsPaneProps) {
 
       <Button type="button" variant="outline" size="sm" onClick={add}>
         <Plus className="w-4 h-4 mr-1" />
-        Додати аддон
+        Додати послугу
       </Button>
     </div>
   )

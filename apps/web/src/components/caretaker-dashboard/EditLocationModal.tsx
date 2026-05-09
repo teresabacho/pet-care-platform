@@ -121,10 +121,17 @@ export default function EditLocationModal({
     })
 
     mapInstance.current = map
-    // Force layout calc after Sheet animation finishes.
-    setTimeout(() => map.invalidateSize(), 250)
+    // Sheet анімація — 300ms, плюс додаткова буферна перевірка на випадок
+    // повільного перемальовування. Кілька викликів гарантують що мапа
+    // підхопить розмір контейнера, як тільки той стане видимим.
+    const t1 = setTimeout(() => map.invalidateSize(), 100)
+    const t2 = setTimeout(() => map.invalidateSize(), 350)
+    const t3 = setTimeout(() => map.invalidateSize(), 700)
 
     return () => {
+      clearTimeout(t1)
+      clearTimeout(t2)
+      clearTimeout(t3)
       map.remove()
       mapInstance.current = null
       markerRef.current = null
