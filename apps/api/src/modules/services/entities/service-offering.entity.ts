@@ -1,8 +1,19 @@
-import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
-import { PriceUnit, ServiceType } from '@pet-care/shared';
+import {
+    Column,
+    CreateDateColumn,
+    Entity,
+    Index,
+    JoinColumn,
+    ManyToOne,
+    PrimaryGeneratedColumn,
+} from 'typeorm';
+import { ServiceType } from '@pet-care/shared';
 import { CaretakerProfile } from '../../users/entities/caretaker-profile.entity';
 
+// Один caretaker має максимум один offering на ServiceType — редагування цін
+// проводиться через зміну ServiceTier-ів, не створенням нового offering.
 @Entity('service_offerings')
+@Index('uq_service_offering_caretaker_type', ['caretakerId', 'serviceType'], { unique: true })
 export class ServiceOffering {
     @PrimaryGeneratedColumn('uuid')
     id: string;
@@ -16,18 +27,6 @@ export class ServiceOffering {
 
     @Column({ type: 'enum', enum: ServiceType, name: 'service_type' })
     serviceType: ServiceType;
-
-    @Column({ type: 'decimal', precision: 10, scale: 2 })
-    price: number;
-
-    // Одиниця тарифікації: за сеанс, годину або добу
-    @Column({ type: 'enum', enum: PriceUnit, default: PriceUnit.PER_SESSION, name: 'price_unit' })
-    priceUnit: PriceUnit;
-
-    // Тривалість одного сеансу в хвилинах (для WALKING, GROOMING, VET_VISIT)
-    // Null для добових послуг (BOARDING, PET_SITTING)
-    @Column({ type: 'int', nullable: true, name: 'duration_minutes' })
-    durationMinutes: number | null;
 
     @Column({ type: 'text', nullable: true })
     description: string | null;

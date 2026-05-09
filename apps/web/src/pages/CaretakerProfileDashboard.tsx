@@ -60,6 +60,9 @@ export default function CaretakerProfileDashboard() {
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState<EditingSection>(null)
   const [creatingService, setCreatingService] = useState(false)
+  const [editingService, setEditingService] = useState<ServiceOffering | null>(
+    null,
+  )
   const [deletingService, setDeletingService] = useState<ServiceOffering | null>(
     null,
   )
@@ -282,6 +285,10 @@ export default function CaretakerProfileDashboard() {
                 <ServiceListItem
                   key={s.id}
                   service={s}
+                  onEdit={(svc) => {
+                    setServiceError(null)
+                    setEditingService(svc)
+                  }}
                   onDelete={(svc) => {
                     setServiceError(null)
                     setDeletingService(svc)
@@ -338,9 +345,26 @@ export default function CaretakerProfileDashboard() {
       <EditServiceModal
         open={creatingService}
         onOpenChange={setCreatingService}
+        mode="create"
         existingServiceTypes={services.map((s) => s.serviceType)}
         onSaved={(created) => setServices((prev) => [...prev, created])}
       />
+      {editingService && (
+        <EditServiceModal
+          open={editingService !== null}
+          onOpenChange={(o) => {
+            if (!o) setEditingService(null)
+          }}
+          mode="edit"
+          service={editingService}
+          onSaved={(updated) => {
+            setServices((prev) =>
+              prev.map((s) => (s.id === updated.id ? updated : s)),
+            )
+            setEditingService(null)
+          }}
+        />
+      )}
       <ConfirmDialog
         open={deletingService !== null}
         onOpenChange={(o) => {

@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { ServiceType } from '@pet-care/shared';
 import { ServiceOffering } from './entities/service-offering.entity';
-import { CreateServiceOfferingDto } from './dto/create-service-offering.dto';
 import { SearchServicesDto } from './dto/search-services.dto';
 
 @Injectable()
@@ -12,13 +12,23 @@ export class ServicesRepository {
         private readonly repo: Repository<ServiceOffering>,
     ) {}
 
-    create(caretakerId: string, dto: CreateServiceOfferingDto): Promise<ServiceOffering> {
-        const offering = this.repo.create({ caretakerId, ...dto });
-        return this.repo.save(offering);
+    findById(id: string): Promise<ServiceOffering | null> {
+        return this.repo.findOne({ where: { id }, relations: ['caretaker'] });
     }
 
     findByCaretakerId(caretakerId: string): Promise<ServiceOffering[]> {
         return this.repo.find({ where: { caretakerId } });
+    }
+
+    findByCaretakerAndType(
+        caretakerId: string,
+        serviceType: ServiceType,
+    ): Promise<ServiceOffering | null> {
+        return this.repo.findOne({ where: { caretakerId, serviceType } });
+    }
+
+    async delete(id: string): Promise<void> {
+        await this.repo.delete(id);
     }
 
     async search(dto: SearchServicesDto): Promise<ServiceOffering[]> {
@@ -32,9 +42,9 @@ export class ServicesRepository {
         }
 
         if (dto.lat !== undefined && dto.lng !== undefined && dto.radiusKm !== undefined) {
-            // ST_MakePoint(longitude, latitude) — довгота ПЕРШОЮ (це важливо!)
-            // ::geography — дає точну відстань по кулі землі (в метрах)
-            // ST_DWithin повертає true якщо точка A знаходиться в межах radiusMeters від точки B
+            // ST_MakePoint(longitude, latitude) — довгота ПЕРШОЮ
+            // ::geography — точна відстань по кулі (в метрах)
+            // ST_DWithin використовує реальні координати, навіть якщо потім обфускується відповідь
             qb.andWhere(
                 `ST_DWithin(
                     geography(ST_SetSRID(ST_MakePoint(cp.service_longitude, cp.service_latitude), 4326)),

@@ -32,6 +32,7 @@ import {
 import {
   serviceOfferingsService,
   type CreateServiceOfferingDto,
+  type UpdateServiceOfferingDto,
 } from '../../services/service-offerings.service'
 import {
   ADDON_PRICE_UNIT_LABELS,
@@ -50,14 +51,24 @@ import {
 import type { ServiceOffering } from '../../types'
 import { cn } from '@/lib/utils'
 
-interface EditServiceModalProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  existingServiceTypes: ServiceType[]
-  onSaved: (service: ServiceOffering) => void
-}
+type EditServiceModalProps =
+  | {
+      open: boolean
+      onOpenChange: (open: boolean) => void
+      mode: 'create'
+      existingServiceTypes: ServiceType[]
+      onSaved: (service: ServiceOffering) => void
+    }
+  | {
+      open: boolean
+      onOpenChange: (open: boolean) => void
+      mode: 'edit'
+      service: ServiceOffering
+      onSaved: (service: ServiceOffering) => void
+    }
 
 interface TierInput {
+  id?: string
   durationMinutes: number | null
   basePrice: number | null
   priceUnit: PriceUnit
@@ -111,18 +122,84 @@ const POLICY_TYPES: ServiceType[] = [
   ServiceType.BOARDING,
 ]
 
-export default function EditServiceModal({
-  open,
-  onOpenChange,
-  existingServiceTypes,
-  onSaved,
-}: EditServiceModalProps) {
-  const availableTypes = Object.values(ServiceType).filter(
-    (t) => !existingServiceTypes.includes(t),
-  )
+function policyFromService(service: ServiceOffering): PolicyState {
+  if (service.walkingPolicy) {
+    return {
+      acceptedDogSizes: service.walkingPolicy.acceptedDogSizes,
+      acceptedCatSizes: service.walkingPolicy.acceptedCatSizes,
+      acceptedAgeGroups: service.walkingPolicy.acceptedAgeGroups,
+      acceptsSpecialNeedsPets: service.walkingPolicy.acceptsSpecialNeedsPets,
+      capabilities: service.walkingPolicy.capabilities,
+      maxDogsAtOnce: service.walkingPolicy.maxDogsAtOnce,
+      homeConditions: [],
+    }
+  }
+  if (service.petSittingPolicy) {
+    return {
+      acceptedDogSizes: service.petSittingPolicy.acceptedDogSizes,
+      acceptedCatSizes: service.petSittingPolicy.acceptedCatSizes,
+      acceptedAgeGroups: service.petSittingPolicy.acceptedAgeGroups,
+      acceptsSpecialNeedsPets: service.petSittingPolicy.acceptsSpecialNeedsPets,
+      capabilities: service.petSittingPolicy.capabilities,
+      maxDogsAtOnce: 1,
+      homeConditions: [],
+    }
+  }
+  if (service.boardingPolicy) {
+    return {
+      acceptedDogSizes: service.boardingPolicy.acceptedDogSizes,
+      acceptedCatSizes: service.boardingPolicy.acceptedCatSizes,
+      acceptedAgeGroups: service.boardingPolicy.acceptedAgeGroups,
+      acceptsSpecialNeedsPets: service.boardingPolicy.acceptsSpecialNeedsPets,
+      capabilities: service.boardingPolicy.capabilities,
+      maxDogsAtOnce: 1,
+      homeConditions: service.boardingPolicy.homeConditions,
+    }
+  }
+  return EMPTY_POLICY
+}
+
+function tiersFromService(service: ServiceOffering): TierInput[] {
+  return (service.tiers ?? []).map((t) => ({
+    id: t.id,
+    durationMinutes: t.durationMinutes,
+    basePrice: Number(t.basePrice),
+    priceUnit: t.priceUnit,
+  }))
+}
+
+function surchargesFromService(service: ServiceOffering): SurchargeInput[] {
+  return (service.sizeSurcharges ?? []).map((s) => ({
+    petSpecies: s.petSpecies,
+    size: s.size,
+    surchargeAmount: Number(s.surchargeAmount),
+  }))
+}
+
+function addonsFromService(service: ServiceOffering): AddonInput[] {
+  return (service.addons ?? []).map((a) => ({
+    name: a.name,
+    description: a.description ?? '',
+    price: Number(a.price),
+    priceUnit: a.priceUnit,
+  }))
+}
+
+export default function EditServiceModal(props: EditServiceModalProps) {
+  const { open, onOpenChange, mode, onSaved } = props
+
+  const availableTypes =
+    mode === 'create'
+      ? Object.values(ServiceType).filter(
+          (t) => !props.existingServiceTypes.includes(t),
+        )
+      : []
+
+  const initialServiceType: ServiceType | null =
+    mode === 'edit' ? props.service.serviceType : (availableTypes[0] ?? null)
 
   const [serviceType, setServiceType] = useState<ServiceType | null>(
-    availableTypes[0] ?? null,
+    initialServiceType,
   )
   const [description, setDescription] = useState('')
   const [tiers, setTiers] = useState<TierInput[]>([])
@@ -133,9 +210,20 @@ export default function EditServiceModal({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Reset on open
+  // Reset / prehydrate on open
   useEffect(() => {
-    if (open) {
+    if (!open) return
+    setActiveTab('general')
+    setError(null)
+    if (mode === 'edit') {
+      const s = props.service
+      setServiceType(s.serviceType)
+      setDescription(s.description ?? '')
+      setTiers(tiersFromService(s))
+      setSurcharges(surchargesFromService(s))
+      setAddons(addonsFromService(s))
+      setPolicy(policyFromService(s))
+    } else {
       const firstAvailable = availableTypes[0] ?? null
       setServiceType(firstAvailable)
       setDescription('')
@@ -154,13 +242,11 @@ export default function EditServiceModal({
       setSurcharges([])
       setAddons([])
       setPolicy(EMPTY_POLICY)
-      setActiveTab('general')
-      setError(null)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open])
 
-  // When service type changes — reset tier defaults to that type's PriceUnit
+  // Type can change тільки при create; edit його лочить.
   function handleTypeChange(next: ServiceType) {
     setServiceType(next)
     setTiers([
@@ -182,23 +268,44 @@ export default function EditServiceModal({
     setBusy(true)
     setError(null)
     try {
-      const dto = buildDto(
-        serviceType,
-        description,
-        validTiers,
-        surcharges,
-        addons,
-        policy,
-      )
-      const created = await serviceOfferingsService.create(dto)
-      onSaved(created)
+      let saved: ServiceOffering
+      if (mode === 'create') {
+        const dto = buildCreateDto(
+          serviceType,
+          description,
+          validTiers,
+          surcharges,
+          addons,
+          policy,
+        )
+        saved = await serviceOfferingsService.create(dto)
+      } else {
+        const dto = buildUpdateDto(
+          serviceType,
+          description,
+          validTiers,
+          surcharges,
+          addons,
+          policy,
+        )
+        saved = await serviceOfferingsService.update(props.service.id, dto)
+      }
+      onSaved(saved)
       onOpenChange(false)
     } catch (err) {
-      const message =
-        (err as { response?: { data?: { message?: string | string[] } } })
-          .response?.data?.message ?? null
-      const flat = Array.isArray(message) ? message.join(', ') : message
-      setError(flat ?? 'Не вдалося створити послугу. Спробуйте ще раз.')
+      const e = err as {
+        response?: { status?: number; data?: { message?: string | string[] } }
+      }
+      const status = e.response?.status
+      if (status === 409) {
+        setError(
+          'Не можна зберегти: тариф використовується в існуючому замовленні. Не видаляйте такі тарифи й лишайте їх ціну незмінною.',
+        )
+      } else {
+        const message = e.response?.data?.message ?? null
+        const flat = Array.isArray(message) ? message.join(', ') : message
+        setError(flat ?? 'Не вдалося зберегти. Спробуйте ще раз.')
+      }
     } finally {
       setBusy(false)
     }
@@ -207,18 +314,21 @@ export default function EditServiceModal({
   const showsPolicyTab = serviceType !== null && POLICY_TYPES.includes(serviceType)
   const tabsToShow = TABS.filter((t) => t.id !== 'policy' || showsPolicyTab)
 
+  const title = mode === 'create' ? 'Нова послуга' : 'Редагувати послугу'
+  const submitLabel = mode === 'create' ? 'Створити' : 'Зберегти'
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="sm:max-w-2xl">
         <SheetHeader>
-          <SheetTitle>Нова послуга</SheetTitle>
+          <SheetTitle>{title}</SheetTitle>
           <SheetDescription>
             Налаштуйте тарифи, надбавки за розмір, додаткові послуги та правила
             прийому тваринок.
           </SheetDescription>
         </SheetHeader>
 
-        {availableTypes.length === 0 ? (
+        {mode === 'create' && availableTypes.length === 0 ? (
           <div className="flex-1 flex items-center justify-center px-6 py-8 text-center text-sm text-zinc-600">
             Ви вже додали послуги всіх типів. Щоб змінити існуючу — відкрийте
             її в списку.
@@ -248,6 +358,7 @@ export default function EditServiceModal({
             <div className="flex-1 overflow-y-auto px-6 py-4">
               {activeTab === 'general' && (
                 <GeneralPane
+                  mode={mode}
                   availableTypes={availableTypes}
                   serviceType={serviceType}
                   description={description}
@@ -296,7 +407,7 @@ export default function EditServiceModal({
                 {busy ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
-                  'Створити'
+                  submitLabel
                 )}
               </Button>
             </SheetFooter>
@@ -308,9 +419,9 @@ export default function EditServiceModal({
 }
 
 // ---------------------------------------------------------------------------
-// DTO builder
+// DTO builders
 
-function buildDto(
+function buildCreateDto(
   serviceType: ServiceType,
   description: string,
   validTiers: TierInput[],
@@ -345,6 +456,48 @@ function buildDto(
         : undefined,
   }
 
+  attachPolicy(dto, serviceType, policy)
+  return dto
+}
+
+function buildUpdateDto(
+  serviceType: ServiceType,
+  description: string,
+  validTiers: TierInput[],
+  surcharges: SurchargeInput[],
+  addons: AddonInput[],
+  policy: PolicyState,
+): UpdateServiceOfferingDto {
+  const dto: UpdateServiceOfferingDto = {
+    description: description.trim() || null,
+    tiers: validTiers.map((t) => ({
+      id: t.id,
+      durationMinutes: t.durationMinutes ?? null,
+      basePrice: t.basePrice as number,
+      priceUnit: t.priceUnit,
+    })),
+    sizeSurcharges: surcharges.map((s) => ({
+      petSpecies: s.petSpecies,
+      size: s.size,
+      surchargeAmount: s.surchargeAmount,
+    })),
+    addons: addons.map((a) => ({
+      name: a.name.trim(),
+      description: a.description.trim() || undefined,
+      price: a.price,
+      priceUnit: a.priceUnit,
+    })),
+  }
+
+  attachPolicy(dto, serviceType, policy)
+  return dto
+}
+
+function attachPolicy(
+  dto: CreateServiceOfferingDto | UpdateServiceOfferingDto,
+  serviceType: ServiceType,
+  policy: PolicyState,
+): void {
   const baseFields = {
     acceptedDogSizes:
       policy.acceptedDogSizes.length > 0
@@ -377,14 +530,13 @@ function buildDto(
       homeConditions: policy.homeConditions,
     }
   }
-
-  return dto
 }
 
 // ---------------------------------------------------------------------------
 // Tab panes
 
 interface GeneralPaneProps {
+  mode: 'create' | 'edit'
   availableTypes: ServiceType[]
   serviceType: ServiceType | null
   description: string
@@ -393,6 +545,7 @@ interface GeneralPaneProps {
 }
 
 function GeneralPane({
+  mode,
   availableTypes,
   serviceType,
   description,
@@ -403,23 +556,33 @@ function GeneralPane({
     <div className="space-y-4">
       <div className="space-y-1.5">
         <Label htmlFor="es-type">Тип послуги</Label>
-        <Select
-          value={serviceType ?? undefined}
-          onValueChange={(v) => onTypeChange(v as ServiceType)}
-        >
-          <SelectTrigger id="es-type">
-            <SelectValue placeholder="Оберіть тип" />
-          </SelectTrigger>
-          <SelectContent>
-            {availableTypes.map((t) => (
-              <SelectItem key={t} value={t}>
-                {SERVICE_TYPE_LABELS[t]}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {mode === 'edit' ? (
+          <Input
+            id="es-type"
+            value={serviceType ? SERVICE_TYPE_LABELS[serviceType] : ''}
+            disabled
+          />
+        ) : (
+          <Select
+            value={serviceType ?? undefined}
+            onValueChange={(v) => onTypeChange(v as ServiceType)}
+          >
+            <SelectTrigger id="es-type">
+              <SelectValue placeholder="Оберіть тип" />
+            </SelectTrigger>
+            <SelectContent>
+              {availableTypes.map((t) => (
+                <SelectItem key={t} value={t}>
+                  {SERVICE_TYPE_LABELS[t]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
         <p className="text-xs text-zinc-500">
-          Тип не можна змінити після створення послуги.
+          {mode === 'edit'
+            ? 'Тип послуги змінити не можна.'
+            : 'Тип не можна змінити після створення послуги.'}
         </p>
       </div>
 
@@ -496,7 +659,7 @@ function TiersPane({ serviceType, tiers, setTiers }: TiersPaneProps) {
       <div className="space-y-2">
         {tiers.map((t, idx) => (
           <div
-            key={idx}
+            key={t.id ?? `new-${idx}`}
             className="flex items-center gap-2 rounded-md border border-zinc-200 p-2 bg-zinc-50"
           >
             {showsDuration ? (
@@ -581,12 +744,6 @@ function SizesPane({ serviceType, surcharges, setSurcharges }: SizesPaneProps) {
 
   const dogSizes = Object.values(DogSize)
   const catSizes = Object.values(CatSize)
-  const showsCats =
-    serviceType === ServiceType.WALKING ||
-    serviceType === ServiceType.PET_SITTING ||
-    serviceType === ServiceType.BOARDING ||
-    serviceType === ServiceType.GROOMING ||
-    serviceType === ServiceType.VET_VISIT
 
   return (
     <div className="space-y-4">
@@ -627,38 +784,36 @@ function SizesPane({ serviceType, surcharges, setSurcharges }: SizesPaneProps) {
         })}
       </div>
 
-      {showsCats && (
-        <div className="space-y-2">
-          <Label className="text-xs uppercase tracking-wide text-zinc-500">
-            Коти
-          </Label>
-          {catSizes.map((size) => {
-            const isMedium = size === CatSize.MEDIUM
-            return (
-              <div key={`cat-${size}`} className="flex items-center gap-3">
-                <span className="text-sm text-zinc-700 flex-1">
-                  {CAT_SIZE_LABELS[size]}
-                </span>
-                <Input
-                  type="number"
-                  className="w-32"
-                  disabled={isMedium}
-                  value={isMedium ? 0 : (get('CAT', size) ?? '')}
-                  onChange={(e) =>
-                    set(
-                      'CAT',
-                      size,
-                      e.target.value === '' ? null : Number(e.target.value),
-                    )
-                  }
-                  placeholder={isMedium ? '0' : '+30 / -10'}
-                />
-                <span className="text-xs text-zinc-500 w-12">грн</span>
-              </div>
-            )
-          })}
-        </div>
-      )}
+      <div className="space-y-2">
+        <Label className="text-xs uppercase tracking-wide text-zinc-500">
+          Коти
+        </Label>
+        {catSizes.map((size) => {
+          const isMedium = size === CatSize.MEDIUM
+          return (
+            <div key={`cat-${size}`} className="flex items-center gap-3">
+              <span className="text-sm text-zinc-700 flex-1">
+                {CAT_SIZE_LABELS[size]}
+              </span>
+              <Input
+                type="number"
+                className="w-32"
+                disabled={isMedium}
+                value={isMedium ? 0 : (get('CAT', size) ?? '')}
+                onChange={(e) =>
+                  set(
+                    'CAT',
+                    size,
+                    e.target.value === '' ? null : Number(e.target.value),
+                  )
+                }
+                placeholder={isMedium ? '0' : '+30 / -10'}
+              />
+              <span className="text-xs text-zinc-500 w-12">грн</span>
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }
@@ -763,10 +918,6 @@ interface PolicyPaneProps {
 }
 
 function PolicyPane({ serviceType, policy, setPolicy }: PolicyPaneProps) {
-  function toggleEnum<T extends string>(arr: T[], value: T): T[] {
-    return arr.includes(value) ? arr.filter((x) => x !== value) : [...arr, value]
-  }
-
   function patch<K extends keyof PolicyState>(key: K, value: PolicyState[K]) {
     setPolicy((prev) => ({ ...prev, [key]: value }))
   }
