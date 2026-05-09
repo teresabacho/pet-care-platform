@@ -3,6 +3,7 @@ import { Navigate, useNavigate } from 'react-router-dom'
 import { Loader2, ExternalLink } from 'lucide-react'
 import { caretakerProfileService } from '../services/caretaker-profile.service'
 import { serviceOfferingsService } from '../services/service-offerings.service'
+import { certificatesService } from '../services/certificates.service'
 import { useAuthStore } from '../store/authStore'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -15,13 +16,15 @@ import EditBaseInfoModal from '../components/caretaker-dashboard/EditBaseInfoMod
 import EditLocationModal from '../components/caretaker-dashboard/EditLocationModal'
 import EditSkillsModal from '../components/caretaker-dashboard/EditSkillsModal'
 import EditServiceModal from '../components/caretaker-dashboard/EditServiceModal'
+import EditCertificatesModal from '../components/caretaker-dashboard/EditCertificatesModal'
 import ServiceListItem from '../components/caretaker-dashboard/ServiceListItem'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { SKILL_LABELS } from '../lib/caretaker-labels'
-import type { CaretakerProfile, ServiceOffering } from '../types'
+import { CERTIFICATE_TYPE_LABELS } from '../lib/certificate-labels'
+import type { CaretakerProfile, Certificate, ServiceOffering } from '../types'
 import { ServiceType } from '@pet-care/shared'
 
-type EditingSection = 'base' | 'location' | 'skills' | null
+type EditingSection = 'base' | 'location' | 'skills' | 'certificates' | null
 import { cn } from '@/lib/utils'
 
 function baseInfoStatus(profile: CaretakerProfile): SectionStatus {
@@ -50,6 +53,10 @@ function servicesStatus(services: ServiceOffering[]): SectionStatus {
   return services.length > 0 ? 'complete' : 'empty'
 }
 
+function certificatesStatus(certificates: Certificate[]): SectionStatus {
+  return certificates.length > 0 ? 'complete' : 'empty'
+}
+
 export default function CaretakerProfileDashboard() {
   const navigate = useNavigate()
   const user = useAuthStore((s) => s.user)
@@ -57,6 +64,7 @@ export default function CaretakerProfileDashboard() {
     undefined,
   )
   const [services, setServices] = useState<ServiceOffering[]>([])
+  const [certificates, setCertificates] = useState<Certificate[]>([])
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState<EditingSection>(null)
   const [creatingService, setCreatingService] = useState(false)
@@ -75,11 +83,15 @@ export default function CaretakerProfileDashboard() {
         const p = await caretakerProfileService.getMyCaretakerProfile()
         if (cancelled) return
         if (p && user) {
-          const svc = await serviceOfferingsService
-            .getByCaretaker(user.id)
-            .catch(() => [])
+          const [svc, certs] = await Promise.all([
+            serviceOfferingsService.getByCaretaker(user.id).catch(() => []),
+            certificatesService
+              .getByCaretakerProfile(p.id)
+              .catch(() => [] as Certificate[]),
+          ])
           if (cancelled) return
           setServices(svc)
+          setCertificates(certs)
         }
         setProfile(p)
       } finally {
@@ -141,6 +153,10 @@ export default function CaretakerProfileDashboard() {
     {
       key: 'services',
       status: servicesStatus(services),
+    },
+    {
+      key: 'certificates',
+      status: certificatesStatus(certificates),
     },
   ]
 
@@ -302,8 +318,26 @@ export default function CaretakerProfileDashboard() {
         <SectionCard
           title="Сертифікати"
           description="Документи, що підтверджують кваліфікацію"
-          status="empty"
-        />
+          status={certificatesStatus(certificates)}
+          actionLabel={certificates.length === 0 ? 'Додати' : 'Редагувати'}
+          onAction={() => setEditing('certificates')}
+        >
+          {certificates.length > 0 && (
+            <ul className="space-y-1">
+              {certificates.map((c) => (
+                <li
+                  key={c.id}
+                  className="text-sm text-zinc-700 flex items-center gap-2"
+                >
+                  <span className="font-medium truncate">{c.title}</span>
+                  <span className="text-xs text-zinc-500 shrink-0">
+                    · {CERTIFICATE_TYPE_LABELS[c.type]}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </SectionCard>
 
         <SectionCard
           title="Галерея робіт"
@@ -341,6 +375,13 @@ export default function CaretakerProfileDashboard() {
         onOpenChange={(o) => setEditing(o ? 'skills' : null)}
         profile={profile}
         onSaved={setProfile}
+      />
+      <EditCertificatesModal
+        open={editing === 'certificates'}
+        onOpenChange={(o) => setEditing(o ? 'certificates' : null)}
+        caretakerProfileId={profile.id}
+        certificates={certificates}
+        onChange={setCertificates}
       />
       <EditServiceModal
         open={creatingService}
