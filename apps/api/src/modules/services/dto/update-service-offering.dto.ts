@@ -18,6 +18,7 @@ import { CreateServiceAddonDto } from '../addons/dto/create-service-addon.dto';
 import { CreateWalkingPolicyDto } from '../policies/dto/create-walking-policy.dto';
 import { CreatePetSittingPolicyDto } from '../policies/dto/create-pet-sitting-policy.dto';
 import { CreateBoardingPolicyDto } from '../policies/dto/create-boarding-policy.dto';
+import { CreateServiceInclusionDto } from '../inclusions/dto/create-service-inclusion.dto';
 
 // Окремий tier-DTO для update: на відміну від create, кожен запис може мати
 // `id` (тоді це існуючий tier — оновлюємо). Tier без id трактуємо як новий.
@@ -80,6 +81,13 @@ export class UpdateServiceOfferingDto {
     @ValidateNested({ each: true })
     @Type(() => CreateServiceAddonDto)
     addons?: CreateServiceAddonDto[];
+
+    @ApiPropertyOptional({ type: [CreateServiceInclusionDto] })
+    @IsOptional()
+    @IsArray()
+    @ValidateNested({ each: true })
+    @Type(() => CreateServiceInclusionDto)
+    inclusions?: CreateServiceInclusionDto[];
 
     @ApiPropertyOptional({ type: () => CreateWalkingPolicyDto })
     @IsOptional()

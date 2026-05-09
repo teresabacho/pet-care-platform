@@ -33,6 +33,10 @@ export interface CreateServiceAddonInput {
   priceUnit: AddonPriceUnit
 }
 
+export interface CreateServiceInclusionInput {
+  text: string
+}
+
 // Policy DTO без id/serviceOfferingId — їх проставляє бекенд.
 export type WalkingPolicyInput = Omit<WalkingPolicy, 'id' | 'serviceOfferingId'>
 export type PetSittingPolicyInput = Omit<PetSittingPolicy, 'id' | 'serviceOfferingId'>
@@ -44,6 +48,7 @@ export interface CreateServiceOfferingDto {
   tiers: CreateServiceTierInput[]
   sizeSurcharges?: CreateSizeSurchargeInput[]
   addons?: CreateServiceAddonInput[]
+  inclusions?: CreateServiceInclusionInput[]
   walkingPolicy?: WalkingPolicyInput
   petSittingPolicy?: PetSittingPolicyInput
   boardingPolicy?: BoardingPolicyInput
@@ -65,6 +70,7 @@ export interface UpdateServiceOfferingDto {
   tiers?: UpdateServiceTierInput[]
   sizeSurcharges?: CreateSizeSurchargeInput[]
   addons?: CreateServiceAddonInput[]
+  inclusions?: CreateServiceInclusionInput[]
   walkingPolicy?: WalkingPolicyInput
   petSittingPolicy?: PetSittingPolicyInput
   boardingPolicy?: BoardingPolicyInput

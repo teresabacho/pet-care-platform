@@ -20,6 +20,8 @@ import {
     PetSittingPoliciesRepository,
     WalkingPoliciesRepository,
 } from './policies/policies.repositories';
+import { ServiceInclusion } from './inclusions/entities/service-inclusion.entity';
+import { ServiceInclusionsRepository } from './inclusions/service-inclusions.repository';
 
 @Module({
     imports: [
@@ -31,6 +33,7 @@ import {
             WalkingPolicy,
             PetSittingPolicy,
             BoardingPolicy,
+            ServiceInclusion,
             CaretakerProfile,
         ]),
         GeoModule,
@@ -45,6 +48,7 @@ import {
         WalkingPoliciesRepository,
         PetSittingPoliciesRepository,
         BoardingPoliciesRepository,
+        ServiceInclusionsRepository,
     ],
     exports: [
         ServicesService,
@@ -54,6 +58,7 @@ import {
         WalkingPoliciesRepository,
         PetSittingPoliciesRepository,
         BoardingPoliciesRepository,
+        ServiceInclusionsRepository,
     ],
 })
 export class ServicesModule {}

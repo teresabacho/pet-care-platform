@@ -15,6 +15,7 @@ import { CreateServiceAddonDto } from '../addons/dto/create-service-addon.dto';
 import { CreateWalkingPolicyDto } from '../policies/dto/create-walking-policy.dto';
 import { CreatePetSittingPolicyDto } from '../policies/dto/create-pet-sitting-policy.dto';
 import { CreateBoardingPolicyDto } from '../policies/dto/create-boarding-policy.dto';
+import { CreateServiceInclusionDto } from '../inclusions/dto/create-service-inclusion.dto';
 
 // Об'єднаний DTO: створюється весь offering із залежностями за один POST.
 // ServicesService.create перевіряє, що передано лише ту policy, яка відповідає
@@ -49,6 +50,13 @@ export class CreateServiceOfferingDto {
     @ValidateNested({ each: true })
     @Type(() => CreateServiceAddonDto)
     addons?: CreateServiceAddonDto[];
+
+    @ApiPropertyOptional({ type: [CreateServiceInclusionDto] })
+    @IsOptional()
+    @IsArray()
+    @ValidateNested({ each: true })
+    @Type(() => CreateServiceInclusionDto)
+    inclusions?: CreateServiceInclusionDto[];
 
     @ApiPropertyOptional({ type: () => CreateWalkingPolicyDto })
     @IsOptional()

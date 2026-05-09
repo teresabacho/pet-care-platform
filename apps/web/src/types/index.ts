@@ -165,6 +165,13 @@ export interface ServiceAddon {
   priceUnit: AddonPriceUnit
 }
 
+export interface ServiceInclusion {
+  id: string
+  serviceOfferingId: string
+  text: string
+  orderIndex: number
+}
+
 interface BasePolicyFields {
   id: string
   serviceOfferingId: string
@@ -198,6 +205,7 @@ export interface ServiceOffering {
   tiers?: ServiceTier[]
   sizeSurcharges?: SizeSurcharge[]
   addons?: ServiceAddon[]
+  inclusions?: ServiceInclusion[]
   walkingPolicy?: WalkingPolicy | null
   petSittingPolicy?: PetSittingPolicy | null
   boardingPolicy?: BoardingPolicy | null

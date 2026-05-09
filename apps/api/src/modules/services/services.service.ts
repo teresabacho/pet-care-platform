@@ -32,6 +32,8 @@ import {
     PetSittingPoliciesRepository,
     WalkingPoliciesRepository,
 } from './policies/policies.repositories';
+import { ServiceInclusion } from './inclusions/entities/service-inclusion.entity';
+import { ServiceInclusionsRepository } from './inclusions/service-inclusions.repository';
 
 // Які serviceType потребують Policy і яку саме.
 type PolicyKey = 'walkingPolicy' | 'petSittingPolicy' | 'boardingPolicy';
@@ -56,6 +58,7 @@ export class ServicesService {
         private readonly walkingPoliciesRepo: WalkingPoliciesRepository,
         private readonly petSittingPoliciesRepo: PetSittingPoliciesRepository,
         private readonly boardingPoliciesRepo: BoardingPoliciesRepository,
+        private readonly inclusionsRepo: ServiceInclusionsRepository,
     ) {}
 
     async create(userId: string, dto: CreateServiceOfferingDto): Promise<ServiceOffering> {
@@ -100,6 +103,10 @@ export class ServicesService {
 
             if (dto.addons?.length) {
                 await this.addonsRepo.createMany(manager, saved.id, dto.addons);
+            }
+
+            if (dto.inclusions?.length) {
+                await this.inclusionsRepo.createMany(manager, saved.id, dto.inclusions);
             }
 
             if (dto.serviceType === ServiceType.WALKING && dto.walkingPolicy) {
@@ -213,6 +220,13 @@ export class ServicesService {
                     await manager.delete(ServiceAddon, { serviceOfferingId: id });
                     if (dto.addons.length > 0) {
                         await this.addonsRepo.createMany(manager, id, dto.addons);
+                    }
+                }
+
+                if (dto.inclusions !== undefined) {
+                    await manager.delete(ServiceInclusion, { serviceOfferingId: id });
+                    if (dto.inclusions.length > 0) {
+                        await this.inclusionsRepo.createMany(manager, id, dto.inclusions);
                     }
                 }
 
@@ -400,15 +414,17 @@ export class ServicesService {
             tiers: ServiceTier[];
             sizeSurcharges: SizeSurcharge[];
             addons: ServiceAddon[];
+            inclusions: ServiceInclusion[];
             walkingPolicy: WalkingPolicy | null;
             petSittingPolicy: PetSittingPolicy | null;
             boardingPolicy: BoardingPolicy | null;
         }
     > {
-        const [tiers, sizeSurcharges, addons] = await Promise.all([
+        const [tiers, sizeSurcharges, addons, inclusions] = await Promise.all([
             this.tiersRepo.findByOfferingId(offering.id),
             this.surchargesRepo.findByOfferingId(offering.id),
             this.addonsRepo.findByOfferingId(offering.id),
+            this.inclusionsRepo.findByOfferingId(offering.id),
         ]);
 
         let walkingPolicy: WalkingPolicy | null = null;
@@ -427,6 +443,7 @@ export class ServicesService {
             tiers,
             sizeSurcharges,
             addons,
+            inclusions,
             walkingPolicy,
             petSittingPolicy,
             boardingPolicy,

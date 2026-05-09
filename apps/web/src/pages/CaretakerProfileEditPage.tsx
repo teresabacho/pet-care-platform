@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import {
-  ArrowLeft,
   FolderHeart,
   Image as ImageIcon,
   Layers,
@@ -31,8 +30,11 @@ import {
 import { MediaGallery } from '../components/caretaker-form/MediaGallery'
 import { ServicesSection } from '../components/caretaker-edit/ServicesSection'
 import { CertificatesSection } from '../components/caretaker-edit/CertificatesSection'
+import {
+  EditPageLayout,
+  type EditPageSection,
+} from '../components/edit-page-layout/EditPageLayout'
 import type { CaretakerProfile, Certificate, ServiceOffering } from '../types'
-import { cn } from '@/lib/utils'
 
 type SectionId =
   | 'base'
@@ -42,7 +44,7 @@ type SectionId =
   | 'certificates'
   | 'gallery'
 
-const SECTIONS: { id: SectionId; label: string; Icon: typeof UserRound }[] = [
+const SECTIONS: EditPageSection[] = [
   { id: 'base', label: 'Базова інформація', Icon: UserRound },
   { id: 'location', label: 'Локація', Icon: MapPin },
   { id: 'skills', label: 'Навички', Icon: Sparkles },
@@ -113,87 +115,42 @@ export default function CaretakerProfileEditPage() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto py-6 px-4">
-      <div className="mb-4">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => navigate('/settings/caretaker-profile')}
-        >
-          <ArrowLeft className="w-4 h-4 mr-1" />
-          До дашборду
-        </Button>
-      </div>
-
-      <h1 className="text-2xl font-semibold text-zinc-900 mb-6">
-        Редагування профілю
-      </h1>
-
-      <div className="grid md:grid-cols-[220px_1fr] gap-6">
-        {/* Sidebar / horizontal tabs */}
-        <nav
-          aria-label="Секції редагування"
-          className="md:sticky md:top-6 md:self-start"
-        >
-          <ul className="flex md:flex-col gap-1 overflow-x-auto md:overflow-visible -mx-4 px-4 md:m-0 md:p-0 pb-2 md:pb-0">
-            {SECTIONS.map((s) => {
-              const active = s.id === section
-              return (
-                <li key={s.id} className="shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => changeSection(s.id)}
-                    className={cn(
-                      'w-full whitespace-nowrap flex items-center gap-2 px-3 py-2 rounded-md text-sm border transition-colors',
-                      active
-                        ? 'bg-zinc-900 text-white border-zinc-900'
-                        : 'bg-white text-zinc-700 border-zinc-200 hover:border-zinc-400',
-                    )}
-                  >
-                    <s.Icon className="w-4 h-4" />
-                    <span>{s.label}</span>
-                  </button>
-                </li>
-              )
-            })}
-          </ul>
-        </nav>
-
-        {/* Content */}
-        <main className="min-w-0">
-          {section === 'base' && (
-            <BaseInfoSection profile={profile} onSaved={setProfile} />
-          )}
-          {section === 'location' && (
-            <LocationSection profile={profile} onSaved={setProfile} />
-          )}
-          {section === 'skills' && (
-            <SkillsSection profile={profile} onSaved={setProfile} />
-          )}
-          {section === 'services' && (
-            <ServicesSection
-              services={services}
-              onChange={setServices}
-            />
-          )}
-          {section === 'certificates' && (
-            <CertificatesSection
-              caretakerProfileId={profile.id}
-              certificates={certificates}
-              onChange={setCertificates}
-            />
-          )}
-          {section === 'gallery' && (
-            <SectionFrame title="Галерея робіт">
-              <MediaGallery
-                ownerType={MediaOwnerType.CARETAKER_GALLERY}
-                ownerId={profile.id}
-              />
-            </SectionFrame>
-          )}
-        </main>
-      </div>
-    </div>
+    <EditPageLayout
+      title="Редагування профілю виконавця"
+      sections={SECTIONS}
+      activeSection={section}
+      onSectionChange={(id) => changeSection(id as SectionId)}
+      backLabel="До дашборду"
+      onBack={() => navigate('/settings/caretaker-profile')}
+    >
+      {section === 'base' && (
+        <BaseInfoSection profile={profile} onSaved={setProfile} />
+      )}
+      {section === 'location' && (
+        <LocationSection profile={profile} onSaved={setProfile} />
+      )}
+      {section === 'skills' && (
+        <SkillsSection profile={profile} onSaved={setProfile} />
+      )}
+      {section === 'services' && (
+        <ServicesSection services={services} onChange={setServices} />
+      )}
+      {section === 'certificates' && (
+        <CertificatesSection
+          caretakerProfileId={profile.id}
+          certificates={certificates}
+          onChange={setCertificates}
+        />
+      )}
+      {section === 'gallery' && (
+        <SectionFrame title="Галерея робіт">
+          <MediaGallery
+            ownerType={MediaOwnerType.CARETAKER_GALLERY}
+            ownerId={profile.id}
+          />
+        </SectionFrame>
+      )}
+    </EditPageLayout>
   )
 }
 

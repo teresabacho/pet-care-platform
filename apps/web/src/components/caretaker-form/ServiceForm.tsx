@@ -1,5 +1,6 @@
 import { Plus, Trash2, Check } from 'lucide-react'
 import {
+  ADDON_TEMPLATES,
   AddonPriceUnit,
   AdditionalServiceCapability,
   CatSize,
@@ -7,6 +8,7 @@ import {
   DEFAULT_PRICE_UNIT,
   DogSize,
   HomeCondition,
+  INCLUSION_TEMPLATES,
   PetAgeGroup,
   PriceUnit,
   ServiceType,
@@ -80,6 +82,7 @@ export interface ServiceFormValue {
   tiers: TierInput[]
   surcharges: SurchargeInput[]
   addons: AddonInput[]
+  inclusions: string[]
   policy: PolicyState
 }
 
@@ -102,6 +105,7 @@ const TABS = [
   { id: 'general', label: 'Загальне' },
   { id: 'tiers', label: 'Тарифи' },
   { id: 'policy', label: 'Правила' },
+  { id: 'inclusions', label: 'Що входить' },
   { id: 'sizes', label: 'Ціна за розміром' },
   { id: 'addons', label: 'Додаткові послуги' },
 ] as const
@@ -136,6 +140,7 @@ export function emptyServiceFormValue(
     ],
     surcharges: [],
     addons: [],
+    inclusions: [],
     policy: EMPTY_POLICY,
   }
 }
@@ -201,6 +206,7 @@ export function serviceFormValueFromOffering(
       price: Number(a.price),
       priceUnit: a.priceUnit,
     })),
+    inclusions: (s.inclusions ?? []).map((i) => i.text),
     policy,
   }
 }
@@ -247,6 +253,10 @@ export function buildCreateDto(
             priceUnit: a.priceUnit,
           }))
         : undefined,
+    inclusions:
+      value.inclusions.length > 0
+        ? value.inclusions.map((text) => ({ text }))
+        : undefined,
   }
   attachPolicy(dto, value)
   return dto
@@ -278,6 +288,7 @@ export function buildUpdateDto(
       price: a.price,
       priceUnit: a.priceUnit,
     })),
+    inclusions: value.inclusions.map((text) => ({ text })),
   }
   attachPolicy(dto, value)
   return dto
@@ -412,6 +423,13 @@ export function ServiceForm({
             }
           />
         )}
+        {activeTab === 'inclusions' && (
+          <InclusionsPane
+            serviceType={value.serviceType}
+            inclusions={value.inclusions}
+            setInclusions={(v) => patch('inclusions', v)}
+          />
+        )}
         {activeTab === 'sizes' && (
           <SizesPane
             surcharges={value.surcharges}
@@ -420,6 +438,7 @@ export function ServiceForm({
         )}
         {activeTab === 'addons' && (
           <AddonsPane
+            serviceType={value.serviceType}
             addons={value.addons}
             setAddons={(a) => patch('addons', a)}
           />
@@ -776,12 +795,123 @@ function SizesPane({ surcharges, setSurcharges }: SizesPaneProps) {
   )
 }
 
+interface InclusionsPaneProps {
+  serviceType: ServiceType
+  inclusions: string[]
+  setInclusions: (next: string[]) => void
+}
+
+function InclusionsPane({
+  serviceType,
+  inclusions,
+  setInclusions,
+}: InclusionsPaneProps) {
+  const templates = INCLUSION_TEMPLATES[serviceType]
+  const [customDraft, setCustomDraft] = useState('')
+
+  function toggle(text: string) {
+    if (inclusions.includes(text)) {
+      setInclusions(inclusions.filter((x) => x !== text))
+    } else {
+      setInclusions([...inclusions, text])
+    }
+  }
+  function addCustom() {
+    const trimmed = customDraft.trim()
+    if (!trimmed || inclusions.includes(trimmed)) return
+    setInclusions([...inclusions, trimmed])
+    setCustomDraft('')
+  }
+  function remove(text: string) {
+    setInclusions(inclusions.filter((x) => x !== text))
+  }
+
+  const customSelected = inclusions.filter((t) => !templates.includes(t))
+
+  return (
+    <div className="space-y-4">
+      <p className="text-xs text-zinc-500">
+        Що клієнт отримує у базовій ціні. Натисніть на готовий пункт, щоб
+        додати, або впишіть свій нижче.
+      </p>
+
+      <div className="flex flex-wrap gap-2">
+        {templates.map((text) => {
+          const active = inclusions.includes(text)
+          return (
+            <button
+              key={text}
+              type="button"
+              onClick={() => toggle(text)}
+              className={cn(
+                'px-3 py-1.5 rounded-full border text-xs transition-colors flex items-center gap-1',
+                active
+                  ? 'bg-zinc-900 border-zinc-900 text-white'
+                  : 'bg-white border-zinc-300 text-zinc-700 hover:border-zinc-500',
+              )}
+            >
+              {active && <Check className="w-3 h-3" />}
+              {text}
+            </button>
+          )
+        })}
+      </div>
+
+      <div className="flex gap-2">
+        <Input
+          value={customDraft}
+          onChange={(e) => setCustomDraft(e.target.value)}
+          placeholder="Свій пункт (наприклад, дзвінок власнику після прогулянки)"
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault()
+              addCustom()
+            }
+          }}
+        />
+        <Button type="button" variant="outline" onClick={addCustom}>
+          Додати
+        </Button>
+      </div>
+
+      {customSelected.length > 0 && (
+        <div className="rounded-md border border-zinc-200 bg-zinc-50 p-3 space-y-1">
+          <p className="text-xs text-zinc-500">Ваші пункти:</p>
+          {customSelected.map((text) => (
+            <div
+              key={text}
+              className="flex items-center justify-between gap-2 text-sm text-zinc-800"
+            >
+              <span>{text}</span>
+              <button
+                type="button"
+                onClick={() => remove(text)}
+                className="text-xs text-zinc-500 hover:text-destructive"
+              >
+                видалити
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 interface AddonsPaneProps {
+  serviceType: ServiceType
   addons: AddonInput[]
   setAddons: (next: AddonInput[]) => void
 }
 
-function AddonsPane({ addons, setAddons }: AddonsPaneProps) {
+function AddonsPane({ serviceType, addons, setAddons }: AddonsPaneProps) {
+  const suggestions = ADDON_TEMPLATES.filter(
+    (t) => !t.serviceTypes || t.serviceTypes.includes(serviceType),
+  )
+  const notYetAdded = suggestions.filter(
+    (s) => !addons.some((a) => a.name === s.name),
+  )
+
   function update(idx: number, p: Partial<AddonInput>) {
     setAddons(addons.map((a, i) => (i === idx ? { ...a, ...p } : a)))
   }
@@ -791,6 +921,17 @@ function AddonsPane({ addons, setAddons }: AddonsPaneProps) {
       { name: '', description: '', price: 0, priceUnit: AddonPriceUnit.PER_BOOKING },
     ])
   }
+  function addFromTemplate(t: (typeof ADDON_TEMPLATES)[number]) {
+    setAddons([
+      ...addons,
+      {
+        name: t.name,
+        description: t.description,
+        price: t.defaultPrice,
+        priceUnit: t.defaultPriceUnit,
+      },
+    ])
+  }
   function remove(idx: number) {
     setAddons(addons.filter((_, i) => i !== idx))
   }
@@ -798,8 +939,27 @@ function AddonsPane({ addons, setAddons }: AddonsPaneProps) {
   return (
     <div className="space-y-3">
       <p className="text-xs text-zinc-500">
-        Опційні платні екстри, які клієнт може обрати при бронюванні.
+        Опційні платні екстри, які клієнт може обрати при бронюванні. Оберіть з
+        готових пропозицій або додайте власну.
       </p>
+
+      {notYetAdded.length > 0 && (
+        <div className="space-y-1.5">
+          <p className="text-xs text-zinc-500">Швидко додати з шаблонів:</p>
+          <div className="flex flex-wrap gap-2">
+            {notYetAdded.map((s) => (
+              <button
+                key={s.name}
+                type="button"
+                onClick={() => addFromTemplate(s)}
+                className="px-3 py-1.5 rounded-full border border-zinc-300 bg-white text-xs text-zinc-700 hover:border-zinc-500 hover:bg-zinc-50 transition-colors"
+              >
+                + {s.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {addons.map((a, idx) => (
         <div

@@ -3,7 +3,7 @@ import {
     Injectable,
     NotFoundException,
 } from '@nestjs/common';
-import { AddonPriceUnit, DayType } from '@pet-care/shared';
+import { AddonPriceUnit, DayType, isUkrainianHoliday, PriceUnit } from '@pet-care/shared';
 import { Pet } from '../pets/entities/pet.entity';
 import { ServiceTiersRepository } from '../services/tiers/service-tiers.repository';
 import { ServiceTier } from '../services/tiers/entities/service-tier.entity';
@@ -39,13 +39,29 @@ export class BookingPricingService {
         }
         const offeringId = initial.serviceOfferingId;
 
-        // Підбираємо найбільш специфічний tier тієї ж тривалості для дати
-        // booking-у. HOLIDAY > WEEKEND > REGULAR. Клієнт зазвичай обирає
-        // REGULAR-tier у формі бронювання — сервер сам застосує weekend/holiday
-        // якщо такий tier налаштований caretaker-ом.
-        const tier = await this.resolveTierForDate(initial, input.scheduledStart);
+        // Для PER_DAY-тарифів (PET_SITTING/BOARDING) ітеруємо кожен день у
+        // діапазоні booking-а та сумуємо ставку, що відповідає DayType дня.
+        // Для PER_SESSION/PER_HOUR — застосовуємо одну ставку за стартовою
+        // датою (це одна подія, а не період).
+        const allTiers = await this.tiersRepo.findByOfferingId(offeringId);
+        const matchTier = (date: Date): ServiceTier => {
+            const dt = getDayType(date);
+            if (dt === DayType.REGULAR) return initial;
+            const found = allTiers.find(
+                (t) =>
+                    t.durationMinutes === initial.durationMinutes && t.dayType === dt,
+            );
+            return found ?? initial;
+        };
 
-        let total = Number(tier.basePrice);
+        let total = 0;
+        if (initial.priceUnit === PriceUnit.PER_DAY) {
+            for (const day of listDaysInRange(input.scheduledStart, input.scheduledEnd)) {
+                total += Number(matchTier(day).basePrice);
+            }
+        } else {
+            total = Number(matchTier(input.scheduledStart).basePrice);
+        }
 
         // Sage surcharge — лише якщо вказані species і size; інакше трактуємо як MEDIUM
         const species = mapSpecies(input.pet.species);
@@ -86,23 +102,6 @@ export class BookingPricingService {
         };
     }
 
-    // ── Day-type aware tier selection ─────────────────────────────────────
-    private async resolveTierForDate(
-        initial: ServiceTier,
-        date: Date,
-    ): Promise<ServiceTier> {
-        const wanted = getDayType(date);
-        if (wanted === DayType.REGULAR) return initial;
-
-        const all = await this.tiersRepo.findByOfferingId(initial.serviceOfferingId);
-        const match = all.find(
-            (t) =>
-                t.durationMinutes === initial.durationMinutes &&
-                t.dayType === wanted,
-        );
-        return match ?? initial;
-    }
-
     private addonMultiplier(
         unit: AddonPriceUnit,
         start: Date,
@@ -119,14 +118,28 @@ export class BookingPricingService {
     }
 }
 
-// Повертає DayType для дати. WEEKEND — субота/неділя за локальним часом.
-// HOLIDAY поки не визначається автоматично — caretaker може створити tier з
-// dayType=HOLIDAY, але без календаря свят booking не «зловить» його. Календар
-// свят підключиться окремою задачею.
+// Повертає DayType для дати. HOLIDAY перевіряється першим (свято в суботу
+// все одно лишається HOLIDAY), потім WEEKEND, інакше REGULAR.
 function getDayType(date: Date): DayType {
+    if (isUkrainianHoliday(date)) return DayType.HOLIDAY;
     const day = date.getDay();
     if (day === 0 || day === 6) return DayType.WEEKEND;
     return DayType.REGULAR;
+}
+
+// Повертає масив дат від start до end включно, кожна — на 00:00 локального
+// часу, щоб порівняння днів працювало правильно навіть коли booking
+// перекидає через північ.
+function listDaysInRange(start: Date, end: Date): Date[] {
+    const result: Date[] = [];
+    const cursor = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+    const last = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+    while (cursor.getTime() <= last.getTime()) {
+        result.push(new Date(cursor));
+        cursor.setDate(cursor.getDate() + 1);
+    }
+    if (result.length === 0) result.push(new Date(start));
+    return result;
 }
 
 function mapSpecies(value: string | null): 'DOG' | 'CAT' | null {

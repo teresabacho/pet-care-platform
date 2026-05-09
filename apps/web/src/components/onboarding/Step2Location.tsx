@@ -4,6 +4,7 @@ import {
   LocationForm,
   type LocationFormValue,
 } from '../caretaker-form/LocationForm'
+import { UserAddressSection } from './UserAddressSection'
 
 export default function Step2Location() {
   const { formData, setField, nextStep, prevStep } =
@@ -51,21 +52,39 @@ export default function Step2Location() {
   }
 
   const isValid =
-    Boolean(country) && serviceLatitude !== null && serviceLongitude !== null
+    Boolean(country) &&
+    Boolean(formData.userCountry) &&
+    serviceLatitude !== null &&
+    serviceLongitude !== null
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div className="space-y-2">
-        <h2 className="text-2xl font-semibold text-zinc-900">
-          Локація і зона роботи
-        </h2>
+        <h2 className="text-2xl font-semibold text-zinc-900">Локація</h2>
         <p className="text-sm text-zinc-600">
-          Вкажіть, де ви знаходитесь, і в якому радіусі готові працювати. Клієнти
-          бачитимуть вас у пошуку за цим радіусом.
+          Спочатку — адреса проживання (для рахунків і звʼязку). Далі — точка
+          на карті, звідки ви приймаєте тваринок або починаєте прогулянки. Ці
+          адреси можуть збігатися або відрізнятися.
         </p>
       </div>
 
-      <LocationForm value={value} onChange={handleChange} showCountrySelect />
+      <section className="space-y-3">
+        <h3 className="text-base font-semibold text-zinc-900">
+          Де ви проживаєте
+        </h3>
+        <UserAddressSection />
+      </section>
+
+      <section className="space-y-3">
+        <h3 className="text-base font-semibold text-zinc-900">
+          Звідки приймаєте замовлення
+        </h3>
+        <p className="text-sm text-zinc-600">
+          Вкажіть точку на карті та радіус, у якому готові працювати — клієнти
+          бачитимуть вас у пошуку за цим радіусом.
+        </p>
+        <LocationForm value={value} onChange={handleChange} showCountrySelect />
+      </section>
 
       <div className="flex justify-between pt-2">
         <Button variant="outline" onClick={prevStep}>

@@ -6,3 +6,4 @@ export * from './addons';
 export * from './acceptance';
 export * from './experience';
 export * from './skills-library';
+export * from './holidays';
