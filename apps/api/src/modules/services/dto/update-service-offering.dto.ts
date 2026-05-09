@@ -12,7 +12,7 @@ import {
     Min,
     ValidateNested,
 } from 'class-validator';
-import { PriceUnit } from '@pet-care/shared';
+import { DayType, PriceUnit } from '@pet-care/shared';
 import { CreateSizeSurchargeDto } from '../size-surcharges/dto/create-size-surcharge.dto';
 import { CreateServiceAddonDto } from '../addons/dto/create-service-addon.dto';
 import { CreateWalkingPolicyDto } from '../policies/dto/create-walking-policy.dto';
@@ -43,6 +43,11 @@ export class UpdateServiceTierDto {
     @ApiProperty({ enum: PriceUnit })
     @IsEnum(PriceUnit)
     priceUnit: PriceUnit;
+
+    @ApiPropertyOptional({ enum: DayType, default: DayType.REGULAR })
+    @IsOptional()
+    @IsEnum(DayType)
+    dayType?: DayType;
 }
 
 // PATCH /services/:id — повна замінe залежностей offering-у. Кожне з полів

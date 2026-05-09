@@ -35,14 +35,15 @@ import {
   PRICE_UNIT_LABELS,
   SERVICE_TYPE_LABELS,
 } from '../../lib/caretaker-labels'
-import { ADDON_SUGGESTIONS, type AddonSuggestion } from '../../lib/addon-suggestions'
 import {
+  ADDON_TEMPLATES,
   ALLOWED_SPECIES_FOR_SERVICE,
   DEFAULT_PRICE_UNIT,
   INCLUSION_TEMPLATES,
   SPECIES_LABELS,
   TIER_DURATION_TEMPLATES,
-} from '../../lib/service-templates'
+  type AddonTemplate,
+} from '@pet-care/shared'
 import ChipMultiSelect from './ChipMultiSelect'
 import CollapsibleSection from './CollapsibleSection'
 import { cn } from '@/lib/utils'
@@ -224,7 +225,7 @@ function ServiceFormPanel({ serviceType, data, setField }: ServiceFormPanelProps
   const showsWalking = serviceType === ServiceType.WALKING
 
   // Ціни на addons-suggestions фільтруються за serviceType
-  const addonSuggestions = ADDON_SUGGESTIONS.filter(
+  const addonSuggestions = ADDON_TEMPLATES.filter(
     (s) => !s.serviceTypes || s.serviceTypes.includes(serviceType),
   )
   const addonNotYetAdded = addonSuggestions.filter(
@@ -280,7 +281,7 @@ function ServiceFormPanel({ serviceType, data, setField }: ServiceFormPanelProps
   const removeAddon = (idx: number) => {
     setField('addons', data.addons.filter((_, i) => i !== idx))
   }
-  const addAddonFromSuggestion = (s: AddonSuggestion) => {
+  const addAddonFromSuggestion = (s: AddonTemplate) => {
     if (data.addons.some((a) => a.name === s.name)) return
     setField('addons', [
       ...data.addons,

@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsEnum, IsInt, IsNumber, IsOptional, Min } from 'class-validator';
-import { PriceUnit } from '@pet-care/shared';
+import { DayType, PriceUnit } from '@pet-care/shared';
 
 export class CreateServiceTierDto {
     @ApiPropertyOptional({
@@ -22,4 +22,14 @@ export class CreateServiceTierDto {
     @ApiProperty({ enum: PriceUnit })
     @IsEnum(PriceUnit)
     priceUnit: PriceUnit;
+
+    @ApiPropertyOptional({
+        enum: DayType,
+        default: DayType.REGULAR,
+        description:
+            'Тип дня. REGULAR — звичайний; WEEKEND/HOLIDAY — окремий тариф',
+    })
+    @IsOptional()
+    @IsEnum(DayType)
+    dayType?: DayType;
 }

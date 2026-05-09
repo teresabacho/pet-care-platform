@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, QueryFailedError, Repository } from 'typeorm';
-import { ServiceType } from '@pet-care/shared';
+import { DayType, ServiceType } from '@pet-care/shared';
 import { ServicesRepository } from './services.repository';
 import { CaretakerProfile } from '../users/entities/caretaker-profile.entity';
 import { ServiceOffering } from './entities/service-offering.entity';
@@ -373,6 +373,7 @@ export class ServicesService {
                         durationMinutes: t.durationMinutes ?? null,
                         basePrice: t.basePrice,
                         priceUnit: t.priceUnit,
+                        dayType: t.dayType ?? DayType.REGULAR,
                     },
                 );
             } else {
@@ -388,6 +389,7 @@ export class ServicesService {
                     durationMinutes: t.durationMinutes ?? null,
                     basePrice: t.basePrice,
                     priceUnit: t.priceUnit,
+                    dayType: t.dayType ?? DayType.REGULAR,
                 })),
             );
         }

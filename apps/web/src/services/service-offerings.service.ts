@@ -1,6 +1,7 @@
 import { apiClient } from './api'
 import type {
   AddonPriceUnit,
+  DayType,
   PriceUnit,
   ServiceType,
 } from '@pet-care/shared'
@@ -16,6 +17,7 @@ export interface CreateServiceTierInput {
   durationMinutes?: number | null
   basePrice: number
   priceUnit: PriceUnit
+  dayType?: DayType
 }
 
 export interface CreateSizeSurchargeInput {
@@ -55,6 +57,7 @@ export interface UpdateServiceTierInput {
   durationMinutes?: number | null
   basePrice: number
   priceUnit: PriceUnit
+  dayType?: DayType
 }
 
 export interface UpdateServiceOfferingDto {

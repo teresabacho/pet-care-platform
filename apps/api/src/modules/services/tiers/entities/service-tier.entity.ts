@@ -6,7 +6,7 @@ import {
     ManyToOne,
     PrimaryGeneratedColumn,
 } from 'typeorm';
-import { PriceUnit } from '@pet-care/shared';
+import { DayType, PriceUnit } from '@pet-care/shared';
 import { ServiceOffering } from '../../entities/service-offering.entity';
 
 // basePrice — ціна для тваринки розміру MEDIUM. Для інших розмірів додається
@@ -34,4 +34,16 @@ export class ServiceTier {
 
     @Column({ type: 'enum', enum: PriceUnit, name: 'price_unit' })
     priceUnit: PriceUnit;
+
+    // REGULAR — звичайний робочий день. WEEKEND/HOLIDAY — окремий тариф для
+    // вихідних/свят. BookingPricingService автоматично обирає найбільш
+    // специфічний tier для дати, не клієнт. Якщо немає WEEKEND/HOLIDAY —
+    // fallback на REGULAR.
+    @Column({
+        type: 'enum',
+        enum: DayType,
+        default: DayType.REGULAR,
+        name: 'day_type',
+    })
+    dayType: DayType;
 }

@@ -3,11 +3,14 @@ import {
   AddonPriceUnit,
   AdditionalServiceCapability,
   CatSize,
+  DayType,
+  DEFAULT_PRICE_UNIT,
   DogSize,
   HomeCondition,
   PetAgeGroup,
   PriceUnit,
   ServiceType,
+  TIER_DURATION_TEMPLATES,
 } from '@pet-care/shared'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -30,10 +33,6 @@ import {
   PRICE_UNIT_LABELS,
   SERVICE_TYPE_LABELS,
 } from '../../lib/caretaker-labels'
-import {
-  DEFAULT_PRICE_UNIT,
-  TIER_DURATION_TEMPLATES,
-} from '../../lib/service-templates'
 import type {
   CreateServiceOfferingDto,
   UpdateServiceOfferingDto,
@@ -49,6 +48,7 @@ export interface TierInput {
   durationMinutes: number | null
   basePrice: number | null
   priceUnit: PriceUnit
+  dayType: DayType
 }
 
 export interface SurchargeInput {
@@ -131,6 +131,7 @@ export function emptyServiceFormValue(
         durationMinutes: serviceType === ServiceType.WALKING ? 60 : null,
         basePrice: null,
         priceUnit: DEFAULT_PRICE_UNIT[serviceType],
+        dayType: DayType.REGULAR,
       },
     ],
     surcharges: [],
@@ -187,6 +188,7 @@ export function serviceFormValueFromOffering(
       durationMinutes: t.durationMinutes,
       basePrice: Number(t.basePrice),
       priceUnit: t.priceUnit,
+      dayType: t.dayType ?? DayType.REGULAR,
     })),
     surcharges: (s.sizeSurcharges ?? []).map((sc) => ({
       petSpecies: sc.petSpecies,
@@ -226,6 +228,7 @@ export function buildCreateDto(
       durationMinutes: t.durationMinutes ?? undefined,
       basePrice: t.basePrice as number,
       priceUnit: t.priceUnit,
+      dayType: t.dayType,
     })),
     sizeSurcharges:
       value.surcharges.length > 0
@@ -262,6 +265,7 @@ export function buildUpdateDto(
       durationMinutes: t.durationMinutes ?? null,
       basePrice: t.basePrice as number,
       priceUnit: t.priceUnit,
+      dayType: t.dayType,
     })),
     sizeSurcharges: value.surcharges.map((s) => ({
       petSpecies: s.petSpecies,
@@ -510,13 +514,27 @@ function TiersPane({ serviceType, tiers, setTiers }: TiersPaneProps) {
   function update(idx: number, p: Partial<TierInput>) {
     setTiers(tiers.map((t, i) => (i === idx ? { ...t, ...p } : t)))
   }
-  function add(durationMinutes: number | null = null) {
+  function add(durationMinutes: number | null = null, dayType: DayType = DayType.REGULAR) {
     setTiers([
       ...tiers,
       {
         durationMinutes,
         basePrice: null,
         priceUnit: DEFAULT_PRICE_UNIT[serviceType],
+        dayType,
+      },
+    ])
+  }
+  function duplicateForDayType(idx: number, dayType: DayType) {
+    const src = tiers[idx]
+    if (!src) return
+    setTiers([
+      ...tiers,
+      {
+        durationMinutes: src.durationMinutes,
+        basePrice: src.basePrice,
+        priceUnit: src.priceUnit,
+        dayType,
       },
     ])
   }
@@ -549,58 +567,109 @@ function TiersPane({ serviceType, tiers, setTiers }: TiersPaneProps) {
         </div>
       )}
 
+      <p className="text-xs text-zinc-500">
+        За замовчуванням тариф діє в усі дні. Можна додати окремі ціни для
+        вихідних чи свят — для тієї ж тривалості. Сервер сам застосує правильну
+        ставку на дату бронювання.
+      </p>
+
       <div className="space-y-2">
-        {tiers.map((t, idx) => (
-          <div
-            key={t.id ?? `new-${idx}`}
-            className="flex items-center gap-2 rounded-md border border-zinc-200 p-2 bg-zinc-50"
-          >
-            {showsDuration ? (
-              <div className="flex items-center gap-1 flex-1">
-                <Input
-                  type="number"
-                  min={1}
-                  value={t.durationMinutes ?? ''}
-                  onChange={(e) => {
-                    const v = e.target.value
-                    update(idx, {
-                      durationMinutes: v === '' ? null : Number(v),
-                    })
-                  }}
-                  placeholder="хв"
-                  className="w-20"
-                />
-                <span className="text-xs text-zinc-500">хв</span>
-              </div>
-            ) : (
-              <div className="flex-1 text-sm text-zinc-600">
-                {PRICE_UNIT_LABELS[t.priceUnit]}
-              </div>
-            )}
-            <Input
-              type="number"
-              min={0}
-              value={t.basePrice ?? ''}
-              onChange={(e) => {
-                const v = e.target.value
-                update(idx, { basePrice: v === '' ? null : Number(v) })
-              }}
-              placeholder="200"
-              className="w-24"
-            />
-            <span className="text-xs text-zinc-500">грн</span>
-            {tiers.length > 1 && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => remove(idx)}
+        {tiers.map((t, idx) => {
+          const hasWeekendVariant = tiers.some(
+            (other, i) =>
+              i !== idx &&
+              other.durationMinutes === t.durationMinutes &&
+              other.dayType === DayType.WEEKEND,
+          )
+          const hasHolidayVariant = tiers.some(
+            (other, i) =>
+              i !== idx &&
+              other.durationMinutes === t.durationMinutes &&
+              other.dayType === DayType.HOLIDAY,
+          )
+          return (
+            <div
+              key={t.id ?? `new-${idx}`}
+              className="flex flex-wrap items-center gap-2 rounded-md border border-zinc-200 p-2 bg-zinc-50"
+            >
+              {showsDuration ? (
+                <div className="flex items-center gap-1">
+                  <Input
+                    type="number"
+                    min={1}
+                    value={t.durationMinutes ?? ''}
+                    onChange={(e) => {
+                      const v = e.target.value
+                      update(idx, {
+                        durationMinutes: v === '' ? null : Number(v),
+                      })
+                    }}
+                    placeholder="хв"
+                    className="w-20"
+                  />
+                  <span className="text-xs text-zinc-500">хв</span>
+                </div>
+              ) : (
+                <div className="flex-1 text-sm text-zinc-600">
+                  {PRICE_UNIT_LABELS[t.priceUnit]}
+                </div>
+              )}
+              <Select
+                value={t.dayType}
+                onValueChange={(v) => update(idx, { dayType: v as DayType })}
               >
-                <Trash2 className="w-4 h-4" />
-              </Button>
-            )}
-          </div>
-        ))}
+                <SelectTrigger className="w-32 h-9">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={DayType.REGULAR}>Звичайний</SelectItem>
+                  <SelectItem value={DayType.WEEKEND}>Вихідні</SelectItem>
+                  <SelectItem value={DayType.HOLIDAY}>Свято</SelectItem>
+                </SelectContent>
+              </Select>
+              <Input
+                type="number"
+                min={0}
+                value={t.basePrice ?? ''}
+                onChange={(e) => {
+                  const v = e.target.value
+                  update(idx, { basePrice: v === '' ? null : Number(v) })
+                }}
+                placeholder="200"
+                className="w-24"
+              />
+              <span className="text-xs text-zinc-500">грн</span>
+              {t.dayType === DayType.REGULAR && !hasWeekendVariant && (
+                <button
+                  type="button"
+                  onClick={() => duplicateForDayType(idx, DayType.WEEKEND)}
+                  className="text-xs text-zinc-600 underline hover:text-zinc-900"
+                >
+                  + вихідні
+                </button>
+              )}
+              {t.dayType === DayType.REGULAR && !hasHolidayVariant && (
+                <button
+                  type="button"
+                  onClick={() => duplicateForDayType(idx, DayType.HOLIDAY)}
+                  className="text-xs text-zinc-600 underline hover:text-zinc-900"
+                >
+                  + свято
+                </button>
+              )}
+              {tiers.length > 1 && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => remove(idx)}
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              )}
+            </div>
+          )
+        })}
         <Button type="button" variant="outline" size="sm" onClick={() => add()}>
           <Plus className="w-4 h-4 mr-1" />
           Додати тариф

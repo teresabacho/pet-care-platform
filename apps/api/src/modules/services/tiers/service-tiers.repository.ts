@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, Repository } from 'typeorm';
+import { DayType } from '@pet-care/shared';
 import { ServiceTier } from './entities/service-tier.entity';
 
 @Injectable()
@@ -21,7 +22,12 @@ export class ServiceTiersRepository {
     createMany(
         manager: EntityManager,
         serviceOfferingId: string,
-        tiers: Array<{ durationMinutes?: number | null; basePrice: number; priceUnit: ServiceTier['priceUnit'] }>,
+        tiers: Array<{
+            durationMinutes?: number | null;
+            basePrice: number;
+            priceUnit: ServiceTier['priceUnit'];
+            dayType?: DayType;
+        }>,
     ): Promise<ServiceTier[]> {
         const entities = tiers.map((t) =>
             manager.create(ServiceTier, {
@@ -29,6 +35,7 @@ export class ServiceTiersRepository {
                 durationMinutes: t.durationMinutes ?? null,
                 basePrice: t.basePrice,
                 priceUnit: t.priceUnit,
+                dayType: t.dayType ?? DayType.REGULAR,
             }),
         );
         return manager.save(ServiceTier, entities);
