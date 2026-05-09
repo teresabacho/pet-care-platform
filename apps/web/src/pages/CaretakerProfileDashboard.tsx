@@ -11,8 +11,13 @@ import StatusBanner from '../components/caretaker-dashboard/StatusBanner'
 import SectionCard, {
   type SectionStatus,
 } from '../components/caretaker-dashboard/SectionCard'
+import EditBaseInfoModal from '../components/caretaker-dashboard/EditBaseInfoModal'
+import EditLocationModal from '../components/caretaker-dashboard/EditLocationModal'
+import EditSkillsModal from '../components/caretaker-dashboard/EditSkillsModal'
 import { SKILL_LABELS, SERVICE_TYPE_LABELS } from '../lib/caretaker-labels'
 import type { CaretakerProfile, ServiceOffering } from '../types'
+
+type EditingSection = 'base' | 'location' | 'skills' | null
 import { cn } from '@/lib/utils'
 
 function baseInfoStatus(profile: CaretakerProfile): SectionStatus {
@@ -49,6 +54,7 @@ export default function CaretakerProfileDashboard() {
   )
   const [services, setServices] = useState<ServiceOffering[]>([])
   const [loading, setLoading] = useState(true)
+  const [editing, setEditing] = useState<EditingSection>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -167,6 +173,10 @@ export default function CaretakerProfileDashboard() {
           title="Базова інформація"
           description="Опис «Про вас» і досвід роботи"
           status={baseInfoStatus(profile)}
+          actionLabel={
+            baseInfoStatus(profile) === 'empty' ? 'Заповнити' : 'Редагувати'
+          }
+          onAction={() => setEditing('base')}
         >
           {profile.bio && (
             <p className="text-sm text-zinc-700 line-clamp-2">{profile.bio}</p>
@@ -183,6 +193,10 @@ export default function CaretakerProfileDashboard() {
           title="Локація і зона роботи"
           description="Точка на карті та радіус, у якому ви працюєте"
           status={locationStatus(profile)}
+          actionLabel={
+            locationStatus(profile) === 'empty' ? 'Налаштувати' : 'Редагувати'
+          }
+          onAction={() => setEditing('location')}
         >
           {profile.city && (
             <p className="text-sm text-zinc-700">
@@ -200,6 +214,10 @@ export default function CaretakerProfileDashboard() {
           title="Навички"
           description="Опціонально — підвищують довіру і ранжування"
           status={skillsStatus(profile)}
+          actionLabel={
+            skillsStatus(profile) === 'empty' ? 'Додати' : 'Редагувати'
+          }
+          onAction={() => setEditing('skills')}
         >
           {profile.skills.length > 0 && (
             <div className="flex flex-wrap gap-1.5">
@@ -269,6 +287,25 @@ export default function CaretakerProfileDashboard() {
           </Button>
         )}
       </div>
+
+      <EditBaseInfoModal
+        open={editing === 'base'}
+        onOpenChange={(o) => setEditing(o ? 'base' : null)}
+        profile={profile}
+        onSaved={setProfile}
+      />
+      <EditLocationModal
+        open={editing === 'location'}
+        onOpenChange={(o) => setEditing(o ? 'location' : null)}
+        profile={profile}
+        onSaved={setProfile}
+      />
+      <EditSkillsModal
+        open={editing === 'skills'}
+        onOpenChange={(o) => setEditing(o ? 'skills' : null)}
+        profile={profile}
+        onSaved={setProfile}
+      />
     </div>
   )
 }
