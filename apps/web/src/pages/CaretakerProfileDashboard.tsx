@@ -14,8 +14,11 @@ import SectionCard, {
 import EditBaseInfoModal from '../components/caretaker-dashboard/EditBaseInfoModal'
 import EditLocationModal from '../components/caretaker-dashboard/EditLocationModal'
 import EditSkillsModal from '../components/caretaker-dashboard/EditSkillsModal'
-import { SKILL_LABELS, SERVICE_TYPE_LABELS } from '../lib/caretaker-labels'
+import EditServiceModal from '../components/caretaker-dashboard/EditServiceModal'
+import ServiceListItem from '../components/caretaker-dashboard/ServiceListItem'
+import { SKILL_LABELS } from '../lib/caretaker-labels'
 import type { CaretakerProfile, ServiceOffering } from '../types'
+import { ServiceType } from '@pet-care/shared'
 
 type EditingSection = 'base' | 'location' | 'skills' | null
 import { cn } from '@/lib/utils'
@@ -55,6 +58,7 @@ export default function CaretakerProfileDashboard() {
   const [services, setServices] = useState<ServiceOffering[]>([])
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState<EditingSection>(null)
+  const [creatingService, setCreatingService] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -120,8 +124,6 @@ export default function CaretakerProfileDashboard() {
   const initials = user?.firstName
     ? user.firstName[0].toUpperCase()
     : (user?.email?.[0]?.toUpperCase() ?? '?')
-
-  const onboardingHref = '/settings/caretaker-profile/onboarding'
 
   return (
     <div className="max-w-3xl mx-auto py-8 px-4 space-y-6">
@@ -234,32 +236,23 @@ export default function CaretakerProfileDashboard() {
           title="Послуги"
           description="Тарифи, прийняті види тваринок, правила"
           status={servicesStatus(services)}
-          actionLabel={services.length === 0 ? 'Додати послугу' : undefined}
+          actionLabel={
+            services.length < Object.values(ServiceType).length
+              ? 'Додати'
+              : undefined
+          }
           onAction={
-            services.length === 0
-              ? () => navigate(onboardingHref)
+            services.length < Object.values(ServiceType).length
+              ? () => setCreatingService(true)
               : undefined
           }
         >
           {services.length > 0 && (
-            <ul className="space-y-1">
+            <div className="space-y-2">
               {services.map((s) => (
-                <li
-                  key={s.id}
-                  className="text-sm text-zinc-700 flex items-center gap-2"
-                >
-                  <span className="font-medium">
-                    {SERVICE_TYPE_LABELS[s.serviceType]}
-                  </span>
-                  {s.tiers && s.tiers.length > 0 && (
-                    <span className="text-xs text-zinc-500">
-                      ({s.tiers.length}{' '}
-                      {s.tiers.length === 1 ? 'тариф' : 'тарифи'})
-                    </span>
-                  )}
-                </li>
+                <ServiceListItem key={s.id} service={s} />
               ))}
-            </ul>
+            </div>
           )}
         </SectionCard>
 
@@ -305,6 +298,12 @@ export default function CaretakerProfileDashboard() {
         onOpenChange={(o) => setEditing(o ? 'skills' : null)}
         profile={profile}
         onSaved={setProfile}
+      />
+      <EditServiceModal
+        open={creatingService}
+        onOpenChange={setCreatingService}
+        existingServiceTypes={services.map((s) => s.serviceType)}
+        onSaved={(created) => setServices((prev) => [...prev, created])}
       />
     </div>
   )
