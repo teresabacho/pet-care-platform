@@ -16,6 +16,7 @@ import EditLocationModal from '../components/caretaker-dashboard/EditLocationMod
 import EditSkillsModal from '../components/caretaker-dashboard/EditSkillsModal'
 import EditServiceModal from '../components/caretaker-dashboard/EditServiceModal'
 import ServiceListItem from '../components/caretaker-dashboard/ServiceListItem'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { SKILL_LABELS } from '../lib/caretaker-labels'
 import type { CaretakerProfile, ServiceOffering } from '../types'
 import { ServiceType } from '@pet-care/shared'
@@ -59,6 +60,10 @@ export default function CaretakerProfileDashboard() {
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState<EditingSection>(null)
   const [creatingService, setCreatingService] = useState(false)
+  const [deletingService, setDeletingService] = useState<ServiceOffering | null>(
+    null,
+  )
+  const [serviceError, setServiceError] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -94,6 +99,27 @@ export default function CaretakerProfileDashboard() {
 
   if (profile === null) {
     return <Navigate to="/settings/caretaker-profile/onboarding" replace />
+  }
+
+  async function handleConfirmDelete() {
+    if (!deletingService) return
+    try {
+      await serviceOfferingsService.delete(deletingService.id)
+      setServices((prev) => prev.filter((s) => s.id !== deletingService.id))
+      setServiceError(null)
+    } catch (err) {
+      const status = (err as { response?: { status?: number } }).response
+        ?.status
+      if (status === 409) {
+        setServiceError(
+          'Не можна видалити: на послугу є активні або завершені замовлення',
+        )
+      } else {
+        setServiceError('Не вдалося видалити послугу. Спробуйте ще раз.')
+      }
+    } finally {
+      setDeletingService(null)
+    }
   }
 
   const sections = [
@@ -247,10 +273,20 @@ export default function CaretakerProfileDashboard() {
               : undefined
           }
         >
+          {serviceError && (
+            <p className="text-sm text-destructive mb-2">{serviceError}</p>
+          )}
           {services.length > 0 && (
             <div className="space-y-2">
               {services.map((s) => (
-                <ServiceListItem key={s.id} service={s} />
+                <ServiceListItem
+                  key={s.id}
+                  service={s}
+                  onDelete={(svc) => {
+                    setServiceError(null)
+                    setDeletingService(svc)
+                  }}
+                />
               ))}
             </div>
           )}
@@ -304,6 +340,17 @@ export default function CaretakerProfileDashboard() {
         onOpenChange={setCreatingService}
         existingServiceTypes={services.map((s) => s.serviceType)}
         onSaved={(created) => setServices((prev) => [...prev, created])}
+      />
+      <ConfirmDialog
+        open={deletingService !== null}
+        onOpenChange={(o) => {
+          if (!o) setDeletingService(null)
+        }}
+        title="Видалити послугу?"
+        description="Це назавжди видалить послугу разом з усіма тарифами, надбавками та аддонами. Активні замовлення цієї послуги не постраждають."
+        confirmLabel="Видалити"
+        variant="destructive"
+        onConfirm={handleConfirmDelete}
       />
     </div>
   )
