@@ -1,5 +1,4 @@
-import { useEffect, useState } from 'react'
-import { Loader2, Plus, Trash2, Check } from 'lucide-react'
+import { Plus, Trash2, Check } from 'lucide-react'
 import {
   AddonPriceUnit,
   AdditionalServiceCapability,
@@ -10,14 +9,6 @@ import {
   PriceUnit,
   ServiceType,
 } from '@pet-care/shared'
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-} from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -29,11 +20,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import {
-  serviceOfferingsService,
-  type CreateServiceOfferingDto,
-  type UpdateServiceOfferingDto,
-} from '../../services/service-offerings.service'
 import {
   ADDON_PRICE_UNIT_LABELS,
   CAPABILITY_LABELS,
@@ -48,46 +34,37 @@ import {
   DEFAULT_PRICE_UNIT,
   TIER_DURATION_TEMPLATES,
 } from '../../lib/service-templates'
+import type {
+  CreateServiceOfferingDto,
+  UpdateServiceOfferingDto,
+} from '../../services/service-offerings.service'
 import type { ServiceOffering } from '../../types'
 import { cn } from '@/lib/utils'
 
-type EditServiceModalProps =
-  | {
-      open: boolean
-      onOpenChange: (open: boolean) => void
-      mode: 'create'
-      existingServiceTypes: ServiceType[]
-      onSaved: (service: ServiceOffering) => void
-    }
-  | {
-      open: boolean
-      onOpenChange: (open: boolean) => void
-      mode: 'edit'
-      service: ServiceOffering
-      onSaved: (service: ServiceOffering) => void
-    }
+// ----------------------------------------------------------------------------
+// Types
 
-interface TierInput {
+export interface TierInput {
   id?: string
   durationMinutes: number | null
   basePrice: number | null
   priceUnit: PriceUnit
 }
 
-interface SurchargeInput {
+export interface SurchargeInput {
   petSpecies: 'DOG' | 'CAT'
   size: string
   surchargeAmount: number
 }
 
-interface AddonInput {
+export interface AddonInput {
   name: string
   description: string
   price: number
   priceUnit: AddonPriceUnit
 }
 
-interface PolicyState {
+export interface PolicyState {
   acceptedDogSizes: DogSize[]
   acceptedCatSizes: CatSize[]
   acceptedAgeGroups: PetAgeGroup[]
@@ -97,15 +74,29 @@ interface PolicyState {
   homeConditions: HomeCondition[]
 }
 
-const EMPTY_POLICY: PolicyState = {
-  acceptedDogSizes: Object.values(DogSize),
-  acceptedCatSizes: Object.values(CatSize),
-  acceptedAgeGroups: Object.values(PetAgeGroup),
-  acceptsSpecialNeedsPets: false,
-  capabilities: [],
-  maxDogsAtOnce: 1,
-  homeConditions: [],
+export interface ServiceFormValue {
+  serviceType: ServiceType
+  description: string
+  tiers: TierInput[]
+  surcharges: SurchargeInput[]
+  addons: AddonInput[]
+  policy: PolicyState
 }
+
+interface ServiceFormProps {
+  value: ServiceFormValue
+  onChange: (next: ServiceFormValue) => void
+  /** true — заборонити зміну serviceType (edit-режим) */
+  lockType?: boolean
+  /** Список доступних типів (для create — щоб приховати вже зайняті) */
+  availableTypes?: ServiceType[]
+}
+
+const POLICY_TYPES: ServiceType[] = [
+  ServiceType.WALKING,
+  ServiceType.PET_SITTING,
+  ServiceType.BOARDING,
+]
 
 const TABS = [
   { id: 'general', label: 'Загальне' },
@@ -116,338 +107,137 @@ const TABS = [
 ] as const
 type TabId = (typeof TABS)[number]['id']
 
-const POLICY_TYPES: ServiceType[] = [
-  ServiceType.WALKING,
-  ServiceType.PET_SITTING,
-  ServiceType.BOARDING,
-]
+// ----------------------------------------------------------------------------
+// Defaults / converters
 
-function policyFromService(service: ServiceOffering): PolicyState {
-  if (service.walkingPolicy) {
-    return {
-      acceptedDogSizes: service.walkingPolicy.acceptedDogSizes,
-      acceptedCatSizes: service.walkingPolicy.acceptedCatSizes,
-      acceptedAgeGroups: service.walkingPolicy.acceptedAgeGroups,
-      acceptsSpecialNeedsPets: service.walkingPolicy.acceptsSpecialNeedsPets,
-      capabilities: service.walkingPolicy.capabilities,
-      maxDogsAtOnce: service.walkingPolicy.maxDogsAtOnce,
-      homeConditions: [],
-    }
-  }
-  if (service.petSittingPolicy) {
-    return {
-      acceptedDogSizes: service.petSittingPolicy.acceptedDogSizes,
-      acceptedCatSizes: service.petSittingPolicy.acceptedCatSizes,
-      acceptedAgeGroups: service.petSittingPolicy.acceptedAgeGroups,
-      acceptsSpecialNeedsPets: service.petSittingPolicy.acceptsSpecialNeedsPets,
-      capabilities: service.petSittingPolicy.capabilities,
-      maxDogsAtOnce: 1,
-      homeConditions: [],
-    }
-  }
-  if (service.boardingPolicy) {
-    return {
-      acceptedDogSizes: service.boardingPolicy.acceptedDogSizes,
-      acceptedCatSizes: service.boardingPolicy.acceptedCatSizes,
-      acceptedAgeGroups: service.boardingPolicy.acceptedAgeGroups,
-      acceptsSpecialNeedsPets: service.boardingPolicy.acceptsSpecialNeedsPets,
-      capabilities: service.boardingPolicy.capabilities,
-      maxDogsAtOnce: 1,
-      homeConditions: service.boardingPolicy.homeConditions,
-    }
-  }
-  return EMPTY_POLICY
+export const EMPTY_POLICY: PolicyState = {
+  acceptedDogSizes: Object.values(DogSize),
+  acceptedCatSizes: Object.values(CatSize),
+  acceptedAgeGroups: Object.values(PetAgeGroup),
+  acceptsSpecialNeedsPets: false,
+  capabilities: [],
+  maxDogsAtOnce: 1,
+  homeConditions: [],
 }
 
-function tiersFromService(service: ServiceOffering): TierInput[] {
-  return (service.tiers ?? []).map((t) => ({
-    id: t.id,
-    durationMinutes: t.durationMinutes,
-    basePrice: Number(t.basePrice),
-    priceUnit: t.priceUnit,
-  }))
-}
-
-function surchargesFromService(service: ServiceOffering): SurchargeInput[] {
-  return (service.sizeSurcharges ?? []).map((s) => ({
-    petSpecies: s.petSpecies,
-    size: s.size,
-    surchargeAmount: Number(s.surchargeAmount),
-  }))
-}
-
-function addonsFromService(service: ServiceOffering): AddonInput[] {
-  return (service.addons ?? []).map((a) => ({
-    name: a.name,
-    description: a.description ?? '',
-    price: Number(a.price),
-    priceUnit: a.priceUnit,
-  }))
-}
-
-export default function EditServiceModal(props: EditServiceModalProps) {
-  const { open, onOpenChange, mode, onSaved } = props
-
-  const availableTypes =
-    mode === 'create'
-      ? Object.values(ServiceType).filter(
-          (t) => !props.existingServiceTypes.includes(t),
-        )
-      : []
-
-  const initialServiceType: ServiceType | null =
-    mode === 'edit' ? props.service.serviceType : (availableTypes[0] ?? null)
-
-  const [serviceType, setServiceType] = useState<ServiceType | null>(
-    initialServiceType,
-  )
-  const [description, setDescription] = useState('')
-  const [tiers, setTiers] = useState<TierInput[]>([])
-  const [surcharges, setSurcharges] = useState<SurchargeInput[]>([])
-  const [addons, setAddons] = useState<AddonInput[]>([])
-  const [policy, setPolicy] = useState<PolicyState>(EMPTY_POLICY)
-  const [activeTab, setActiveTab] = useState<TabId>('general')
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  // Reset / prehydrate on open
-  useEffect(() => {
-    if (!open) return
-    setActiveTab('general')
-    setError(null)
-    if (mode === 'edit') {
-      const s = props.service
-      setServiceType(s.serviceType)
-      setDescription(s.description ?? '')
-      setTiers(tiersFromService(s))
-      setSurcharges(surchargesFromService(s))
-      setAddons(addonsFromService(s))
-      setPolicy(policyFromService(s))
-    } else {
-      const firstAvailable = availableTypes[0] ?? null
-      setServiceType(firstAvailable)
-      setDescription('')
-      setTiers(
-        firstAvailable
-          ? [
-              {
-                durationMinutes:
-                  firstAvailable === ServiceType.WALKING ? 60 : null,
-                basePrice: null,
-                priceUnit: DEFAULT_PRICE_UNIT[firstAvailable],
-              },
-            ]
-          : [],
-      )
-      setSurcharges([])
-      setAddons([])
-      setPolicy(EMPTY_POLICY)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open])
-
-  // Type can change тільки при create; edit його лочить.
-  function handleTypeChange(next: ServiceType) {
-    setServiceType(next)
-    setTiers([
+export function emptyServiceFormValue(
+  serviceType: ServiceType,
+): ServiceFormValue {
+  return {
+    serviceType,
+    description: '',
+    tiers: [
       {
-        durationMinutes: next === ServiceType.WALKING ? 60 : null,
+        durationMinutes: serviceType === ServiceType.WALKING ? 60 : null,
         basePrice: null,
-        priceUnit: DEFAULT_PRICE_UNIT[next],
+        priceUnit: DEFAULT_PRICE_UNIT[serviceType],
       },
-    ])
+    ],
+    surcharges: [],
+    addons: [],
+    policy: EMPTY_POLICY,
   }
+}
 
-  const validTiers = tiers.filter(
+export function serviceFormValueFromOffering(
+  s: ServiceOffering,
+): ServiceFormValue {
+  const policy: PolicyState = (() => {
+    if (s.walkingPolicy) {
+      return {
+        acceptedDogSizes: s.walkingPolicy.acceptedDogSizes,
+        acceptedCatSizes: s.walkingPolicy.acceptedCatSizes,
+        acceptedAgeGroups: s.walkingPolicy.acceptedAgeGroups,
+        acceptsSpecialNeedsPets: s.walkingPolicy.acceptsSpecialNeedsPets,
+        capabilities: s.walkingPolicy.capabilities,
+        maxDogsAtOnce: s.walkingPolicy.maxDogsAtOnce,
+        homeConditions: [],
+      }
+    }
+    if (s.petSittingPolicy) {
+      return {
+        acceptedDogSizes: s.petSittingPolicy.acceptedDogSizes,
+        acceptedCatSizes: s.petSittingPolicy.acceptedCatSizes,
+        acceptedAgeGroups: s.petSittingPolicy.acceptedAgeGroups,
+        acceptsSpecialNeedsPets: s.petSittingPolicy.acceptsSpecialNeedsPets,
+        capabilities: s.petSittingPolicy.capabilities,
+        maxDogsAtOnce: 1,
+        homeConditions: [],
+      }
+    }
+    if (s.boardingPolicy) {
+      return {
+        acceptedDogSizes: s.boardingPolicy.acceptedDogSizes,
+        acceptedCatSizes: s.boardingPolicy.acceptedCatSizes,
+        acceptedAgeGroups: s.boardingPolicy.acceptedAgeGroups,
+        acceptsSpecialNeedsPets: s.boardingPolicy.acceptsSpecialNeedsPets,
+        capabilities: s.boardingPolicy.capabilities,
+        maxDogsAtOnce: 1,
+        homeConditions: s.boardingPolicy.homeConditions,
+      }
+    }
+    return EMPTY_POLICY
+  })()
+
+  return {
+    serviceType: s.serviceType,
+    description: s.description ?? '',
+    tiers: (s.tiers ?? []).map((t) => ({
+      id: t.id,
+      durationMinutes: t.durationMinutes,
+      basePrice: Number(t.basePrice),
+      priceUnit: t.priceUnit,
+    })),
+    surcharges: (s.sizeSurcharges ?? []).map((sc) => ({
+      petSpecies: sc.petSpecies,
+      size: sc.size,
+      surchargeAmount: Number(sc.surchargeAmount),
+    })),
+    addons: (s.addons ?? []).map((a) => ({
+      name: a.name,
+      description: a.description ?? '',
+      price: Number(a.price),
+      priceUnit: a.priceUnit,
+    })),
+    policy,
+  }
+}
+
+export function isServiceFormValid(value: ServiceFormValue): boolean {
+  const validTiers = value.tiers.filter(
     (t) => t.basePrice !== null && t.basePrice > 0,
   )
-  const isValid = serviceType !== null && validTiers.length > 0
-
-  async function handleSave() {
-    if (!serviceType || !isValid) return
-    setBusy(true)
-    setError(null)
-    try {
-      let saved: ServiceOffering
-      if (mode === 'create') {
-        const dto = buildCreateDto(
-          serviceType,
-          description,
-          validTiers,
-          surcharges,
-          addons,
-          policy,
-        )
-        saved = await serviceOfferingsService.create(dto)
-      } else {
-        const dto = buildUpdateDto(
-          serviceType,
-          description,
-          validTiers,
-          surcharges,
-          addons,
-          policy,
-        )
-        saved = await serviceOfferingsService.update(props.service.id, dto)
-      }
-      onSaved(saved)
-      onOpenChange(false)
-    } catch (err) {
-      const e = err as {
-        response?: { status?: number; data?: { message?: string | string[] } }
-      }
-      const status = e.response?.status
-      if (status === 409) {
-        setError(
-          'Не можна зберегти: тариф використовується в існуючому замовленні. Не видаляйте такі тарифи й лишайте їх ціну незмінною.',
-        )
-      } else {
-        const message = e.response?.data?.message ?? null
-        const flat = Array.isArray(message) ? message.join(', ') : message
-        setError(flat ?? 'Не вдалося зберегти. Спробуйте ще раз.')
-      }
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  const showsPolicyTab = serviceType !== null && POLICY_TYPES.includes(serviceType)
-  const tabsToShow = TABS.filter((t) => t.id !== 'policy' || showsPolicyTab)
-
-  const title = mode === 'create' ? 'Нова послуга' : 'Редагувати послугу'
-  const submitLabel = mode === 'create' ? 'Створити' : 'Зберегти'
-
-  return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="sm:max-w-2xl">
-        <SheetHeader>
-          <SheetTitle>{title}</SheetTitle>
-          <SheetDescription>
-            Налаштуйте тарифи, надбавки за розмір, додаткові послуги та правила
-            прийому тваринок.
-          </SheetDescription>
-        </SheetHeader>
-
-        {mode === 'create' && availableTypes.length === 0 ? (
-          <div className="flex-1 flex items-center justify-center px-6 py-8 text-center text-sm text-zinc-600">
-            Ви вже додали послуги всіх типів. Щоб змінити існуючу — відкрийте
-            її в списку.
-          </div>
-        ) : (
-          <>
-            <div className="px-6 pt-3 border-b border-zinc-200">
-              <div className="flex flex-wrap gap-1 -mb-px">
-                {tabsToShow.map((tab) => (
-                  <button
-                    key={tab.id}
-                    type="button"
-                    onClick={() => setActiveTab(tab.id)}
-                    className={cn(
-                      'px-3 py-2 text-sm border-b-2 transition-colors',
-                      activeTab === tab.id
-                        ? 'border-zinc-900 text-zinc-900 font-medium'
-                        : 'border-transparent text-zinc-500 hover:text-zinc-800',
-                    )}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="flex-1 overflow-y-auto px-6 py-4">
-              {activeTab === 'general' && (
-                <GeneralPane
-                  mode={mode}
-                  availableTypes={availableTypes}
-                  serviceType={serviceType}
-                  description={description}
-                  onTypeChange={handleTypeChange}
-                  onDescriptionChange={setDescription}
-                />
-              )}
-              {activeTab === 'tiers' && serviceType && (
-                <TiersPane
-                  serviceType={serviceType}
-                  tiers={tiers}
-                  setTiers={setTiers}
-                />
-              )}
-              {activeTab === 'sizes' && (
-                <SizesPane
-                  serviceType={serviceType}
-                  surcharges={surcharges}
-                  setSurcharges={setSurcharges}
-                />
-              )}
-              {activeTab === 'addons' && (
-                <AddonsPane addons={addons} setAddons={setAddons} />
-              )}
-              {activeTab === 'policy' && serviceType && showsPolicyTab && (
-                <PolicyPane
-                  serviceType={serviceType}
-                  policy={policy}
-                  setPolicy={setPolicy}
-                />
-              )}
-              {error && (
-                <p className="text-sm text-destructive mt-4">{error}</p>
-              )}
-            </div>
-
-            <SheetFooter>
-              <Button
-                variant="outline"
-                onClick={() => onOpenChange(false)}
-                disabled={busy}
-              >
-                Скасувати
-              </Button>
-              <Button onClick={handleSave} disabled={busy || !isValid}>
-                {busy ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  submitLabel
-                )}
-              </Button>
-            </SheetFooter>
-          </>
-        )}
-      </SheetContent>
-    </Sheet>
-  )
+  return validTiers.length > 0
 }
 
-// ---------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
 // DTO builders
 
-function buildCreateDto(
-  serviceType: ServiceType,
-  description: string,
-  validTiers: TierInput[],
-  surcharges: SurchargeInput[],
-  addons: AddonInput[],
-  policy: PolicyState,
+export function buildCreateDto(
+  value: ServiceFormValue,
 ): CreateServiceOfferingDto {
+  const validTiers = value.tiers.filter(
+    (t) => t.basePrice !== null && t.basePrice > 0,
+  )
   const dto: CreateServiceOfferingDto = {
-    serviceType,
-    description: description.trim() || undefined,
+    serviceType: value.serviceType,
+    description: value.description.trim() || undefined,
     tiers: validTiers.map((t) => ({
       durationMinutes: t.durationMinutes ?? undefined,
       basePrice: t.basePrice as number,
       priceUnit: t.priceUnit,
     })),
     sizeSurcharges:
-      surcharges.length > 0
-        ? surcharges.map((s) => ({
+      value.surcharges.length > 0
+        ? value.surcharges.map((s) => ({
             petSpecies: s.petSpecies,
             size: s.size,
             surchargeAmount: s.surchargeAmount,
           }))
         : undefined,
     addons:
-      addons.length > 0
-        ? addons.map((a) => ({
+      value.addons.length > 0
+        ? value.addons.map((a) => ({
             name: a.name.trim(),
             description: a.description.trim() || undefined,
             price: a.price,
@@ -455,123 +245,228 @@ function buildCreateDto(
           }))
         : undefined,
   }
-
-  attachPolicy(dto, serviceType, policy)
+  attachPolicy(dto, value)
   return dto
 }
 
-function buildUpdateDto(
-  serviceType: ServiceType,
-  description: string,
-  validTiers: TierInput[],
-  surcharges: SurchargeInput[],
-  addons: AddonInput[],
-  policy: PolicyState,
+export function buildUpdateDto(
+  value: ServiceFormValue,
 ): UpdateServiceOfferingDto {
+  const validTiers = value.tiers.filter(
+    (t) => t.basePrice !== null && t.basePrice > 0,
+  )
   const dto: UpdateServiceOfferingDto = {
-    description: description.trim() || null,
+    description: value.description.trim() || null,
     tiers: validTiers.map((t) => ({
       id: t.id,
       durationMinutes: t.durationMinutes ?? null,
       basePrice: t.basePrice as number,
       priceUnit: t.priceUnit,
     })),
-    sizeSurcharges: surcharges.map((s) => ({
+    sizeSurcharges: value.surcharges.map((s) => ({
       petSpecies: s.petSpecies,
       size: s.size,
       surchargeAmount: s.surchargeAmount,
     })),
-    addons: addons.map((a) => ({
+    addons: value.addons.map((a) => ({
       name: a.name.trim(),
       description: a.description.trim() || undefined,
       price: a.price,
       priceUnit: a.priceUnit,
     })),
   }
-
-  attachPolicy(dto, serviceType, policy)
+  attachPolicy(dto, value)
   return dto
 }
 
 function attachPolicy(
   dto: CreateServiceOfferingDto | UpdateServiceOfferingDto,
-  serviceType: ServiceType,
-  policy: PolicyState,
+  value: ServiceFormValue,
 ): void {
   const baseFields = {
     acceptedDogSizes:
-      policy.acceptedDogSizes.length > 0
-        ? policy.acceptedDogSizes
+      value.policy.acceptedDogSizes.length > 0
+        ? value.policy.acceptedDogSizes
         : Object.values(DogSize),
     acceptedAgeGroups:
-      policy.acceptedAgeGroups.length > 0
-        ? policy.acceptedAgeGroups
+      value.policy.acceptedAgeGroups.length > 0
+        ? value.policy.acceptedAgeGroups
         : Object.values(PetAgeGroup),
-    acceptsSpecialNeedsPets: policy.acceptsSpecialNeedsPets,
-    capabilities: policy.capabilities,
+    acceptsSpecialNeedsPets: value.policy.acceptsSpecialNeedsPets,
+    capabilities: value.policy.capabilities,
   }
   const catSizes =
-    policy.acceptedCatSizes.length > 0
-      ? policy.acceptedCatSizes
+    value.policy.acceptedCatSizes.length > 0
+      ? value.policy.acceptedCatSizes
       : Object.values(CatSize)
 
-  if (serviceType === ServiceType.WALKING) {
+  if (value.serviceType === ServiceType.WALKING) {
     dto.walkingPolicy = {
       ...baseFields,
       acceptedCatSizes: catSizes,
-      maxDogsAtOnce: policy.maxDogsAtOnce,
+      maxDogsAtOnce: value.policy.maxDogsAtOnce,
     }
-  } else if (serviceType === ServiceType.PET_SITTING) {
+  } else if (value.serviceType === ServiceType.PET_SITTING) {
     dto.petSittingPolicy = { ...baseFields, acceptedCatSizes: catSizes }
-  } else if (serviceType === ServiceType.BOARDING) {
+  } else if (value.serviceType === ServiceType.BOARDING) {
     dto.boardingPolicy = {
       ...baseFields,
       acceptedCatSizes: catSizes,
-      homeConditions: policy.homeConditions,
+      homeConditions: value.policy.homeConditions,
     }
   }
 }
 
-// ---------------------------------------------------------------------------
-// Tab panes
+// ----------------------------------------------------------------------------
+// Component
+
+import { useState } from 'react'
+
+export function ServiceForm({
+  value,
+  onChange,
+  lockType = false,
+  availableTypes,
+}: ServiceFormProps) {
+  const [activeTab, setActiveTab] = useState<TabId>('general')
+
+  const showsPolicyTab = POLICY_TYPES.includes(value.serviceType)
+  const tabsToShow = TABS.filter((t) => t.id !== 'policy' || showsPolicyTab)
+
+  function patch<K extends keyof ServiceFormValue>(
+    key: K,
+    next: ServiceFormValue[K],
+  ) {
+    onChange({ ...value, [key]: next })
+  }
+
+  function handleTypeChange(next: ServiceType) {
+    onChange({
+      ...value,
+      serviceType: next,
+      tiers: [
+        {
+          durationMinutes: next === ServiceType.WALKING ? 60 : null,
+          basePrice: null,
+          priceUnit: DEFAULT_PRICE_UNIT[next],
+        },
+      ],
+    })
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="border-b border-zinc-200">
+        <div className="flex flex-wrap gap-1 -mb-px">
+          {tabsToShow.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTab(tab.id)}
+              className={cn(
+                'px-3 py-2 text-sm border-b-2 transition-colors',
+                activeTab === tab.id
+                  ? 'border-zinc-900 text-zinc-900 font-medium'
+                  : 'border-transparent text-zinc-500 hover:text-zinc-800',
+              )}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="pt-2">
+        {activeTab === 'general' && (
+          <GeneralPane
+            lockType={lockType}
+            availableTypes={availableTypes}
+            serviceType={value.serviceType}
+            description={value.description}
+            onTypeChange={handleTypeChange}
+            onDescriptionChange={(v) => patch('description', v)}
+          />
+        )}
+        {activeTab === 'tiers' && (
+          <TiersPane
+            serviceType={value.serviceType}
+            tiers={value.tiers}
+            setTiers={(t) => patch('tiers', t)}
+          />
+        )}
+        {activeTab === 'policy' && showsPolicyTab && (
+          <PolicyPane
+            serviceType={value.serviceType}
+            policy={value.policy}
+            setPolicy={(updater) =>
+              patch(
+                'policy',
+                typeof updater === 'function'
+                  ? (updater as (p: PolicyState) => PolicyState)(value.policy)
+                  : updater,
+              )
+            }
+          />
+        )}
+        {activeTab === 'sizes' && (
+          <SizesPane
+            surcharges={value.surcharges}
+            setSurcharges={(s) => patch('surcharges', s)}
+          />
+        )}
+        {activeTab === 'addons' && (
+          <AddonsPane
+            addons={value.addons}
+            setAddons={(a) => patch('addons', a)}
+          />
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ----------------------------------------------------------------------------
+// Panes
 
 interface GeneralPaneProps {
-  mode: 'create' | 'edit'
-  availableTypes: ServiceType[]
-  serviceType: ServiceType | null
+  lockType: boolean
+  availableTypes?: ServiceType[]
+  serviceType: ServiceType
   description: string
   onTypeChange: (t: ServiceType) => void
   onDescriptionChange: (v: string) => void
 }
 
 function GeneralPane({
-  mode,
+  lockType,
   availableTypes,
   serviceType,
   description,
   onTypeChange,
   onDescriptionChange,
 }: GeneralPaneProps) {
+  const types = availableTypes ?? Object.values(ServiceType)
+
   return (
     <div className="space-y-4">
       <div className="space-y-1.5">
-        <Label htmlFor="es-type">Тип послуги</Label>
-        {mode === 'edit' ? (
+        <Label htmlFor="sf-type">Тип послуги</Label>
+        {lockType ? (
           <Input
-            id="es-type"
-            value={serviceType ? SERVICE_TYPE_LABELS[serviceType] : ''}
+            id="sf-type"
+            value={SERVICE_TYPE_LABELS[serviceType]}
             disabled
           />
         ) : (
           <Select
-            value={serviceType ?? undefined}
+            value={serviceType}
             onValueChange={(v) => onTypeChange(v as ServiceType)}
           >
-            <SelectTrigger id="es-type">
-              <SelectValue placeholder="Оберіть тип" />
+            <SelectTrigger id="sf-type">
+              <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {availableTypes.map((t) => (
+              {types.map((t) => (
                 <SelectItem key={t} value={t}>
                   {SERVICE_TYPE_LABELS[t]}
                 </SelectItem>
@@ -580,16 +475,16 @@ function GeneralPane({
           </Select>
         )}
         <p className="text-xs text-zinc-500">
-          {mode === 'edit'
+          {lockType
             ? 'Тип послуги змінити не можна.'
             : 'Тип не можна змінити після створення послуги.'}
         </p>
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor="es-desc">Опис (опціонально)</Label>
+        <Label htmlFor="sf-desc">Опис (опціонально)</Label>
         <Textarea
-          id="es-desc"
+          id="sf-desc"
           value={description}
           onChange={(e) => onDescriptionChange(e.target.value)}
           placeholder="Що включає послуга, як проходить, особливості…"
@@ -612,8 +507,8 @@ function TiersPane({ serviceType, tiers, setTiers }: TiersPaneProps) {
     DEFAULT_PRICE_UNIT[serviceType] === PriceUnit.PER_SESSION ||
     DEFAULT_PRICE_UNIT[serviceType] === PriceUnit.PER_HOUR
 
-  function update(idx: number, patch: Partial<TierInput>) {
-    setTiers(tiers.map((t, i) => (i === idx ? { ...t, ...patch } : t)))
+  function update(idx: number, p: Partial<TierInput>) {
+    setTiers(tiers.map((t, i) => (i === idx ? { ...t, ...p } : t)))
   }
   function add(durationMinutes: number | null = null) {
     setTiers([
@@ -634,15 +529,13 @@ function TiersPane({ serviceType, tiers, setTiers }: TiersPaneProps) {
     <div className="space-y-3">
       <p className="text-xs text-zinc-500">
         Ціни — для тваринки розміру MEDIUM. Для інших розмірів додайте надбавку
-        у вкладці «Розмір». Мінімум один тариф.
+        у вкладці «Ціна за розміром». Мінімум один тариф.
       </p>
 
       {showsDuration && templates.length > 0 && (
         <div className="flex flex-wrap gap-2">
           {templates
-            .filter(
-              (tt) => !tiers.some((t) => t.durationMinutes === tt.minutes),
-            )
+            .filter((tt) => !tiers.some((t) => t.durationMinutes === tt.minutes))
             .map((tt) => (
               <button
                 key={tt.label}
@@ -718,29 +611,26 @@ function TiersPane({ serviceType, tiers, setTiers }: TiersPaneProps) {
 }
 
 interface SizesPaneProps {
-  serviceType: ServiceType | null
   surcharges: SurchargeInput[]
   setSurcharges: (next: SurchargeInput[]) => void
 }
 
-function SizesPane({ serviceType, surcharges, setSurcharges }: SizesPaneProps) {
+function SizesPane({ surcharges, setSurcharges }: SizesPaneProps) {
   function get(species: 'DOG' | 'CAT', size: string): number | null {
     return (
       surcharges.find((s) => s.petSpecies === species && s.size === size)
         ?.surchargeAmount ?? null
     )
   }
-  function set(species: 'DOG' | 'CAT', size: string, value: number | null) {
+  function set(species: 'DOG' | 'CAT', size: string, val: number | null) {
     const next = surcharges.filter(
       (s) => !(s.petSpecies === species && s.size === size),
     )
-    if (value !== null && value !== 0) {
-      next.push({ petSpecies: species, size, surchargeAmount: value })
+    if (val !== null && val !== 0) {
+      next.push({ petSpecies: species, size, surchargeAmount: val })
     }
     setSurcharges(next)
   }
-
-  if (!serviceType) return null
 
   const dogSizes = Object.values(DogSize)
   const catSizes = Object.values(CatSize)
@@ -749,8 +639,7 @@ function SizesPane({ serviceType, surcharges, setSurcharges }: SizesPaneProps) {
     <div className="space-y-4">
       <p className="text-xs text-zinc-500">
         Скільки дорожче (або дешевше) для не-MEDIUM розмірів. MEDIUM завжди
-        дорівнює базовій ціні (надбавка = 0). Залиште поле порожнім для
-        розмірів без надбавки.
+        дорівнює базовій ціні. Залиште поле порожнім для розмірів без надбавки.
       </p>
 
       <div className="space-y-2">
@@ -824,8 +713,8 @@ interface AddonsPaneProps {
 }
 
 function AddonsPane({ addons, setAddons }: AddonsPaneProps) {
-  function update(idx: number, patch: Partial<AddonInput>) {
-    setAddons(addons.map((a, i) => (i === idx ? { ...a, ...patch } : a)))
+  function update(idx: number, p: Partial<AddonInput>) {
+    setAddons(addons.map((a, i) => (i === idx ? { ...a, ...p } : a)))
   }
   function add() {
     setAddons([
@@ -912,14 +801,12 @@ function AddonsPane({ addons, setAddons }: AddonsPaneProps) {
 interface PolicyPaneProps {
   serviceType: ServiceType
   policy: PolicyState
-  setPolicy: (
-    updater: PolicyState | ((prev: PolicyState) => PolicyState),
-  ) => void
+  setPolicy: (updater: PolicyState | ((p: PolicyState) => PolicyState)) => void
 }
 
 function PolicyPane({ serviceType, policy, setPolicy }: PolicyPaneProps) {
-  function patch<K extends keyof PolicyState>(key: K, value: PolicyState[K]) {
-    setPolicy((prev) => ({ ...prev, [key]: value }))
+  function patch<K extends keyof PolicyState>(key: K, val: PolicyState[K]) {
+    setPolicy((prev) => ({ ...prev, [key]: val }))
   }
 
   return (
@@ -933,7 +820,6 @@ function PolicyPane({ serviceType, policy, setPolicy }: PolicyPaneProps) {
         value={policy.acceptedDogSizes}
         onChange={(v) => patch('acceptedDogSizes', v as DogSize[])}
       />
-
       <ChipsField
         label="Розміри котів"
         options={Object.values(CatSize).map((v) => ({
@@ -943,7 +829,6 @@ function PolicyPane({ serviceType, policy, setPolicy }: PolicyPaneProps) {
         value={policy.acceptedCatSizes}
         onChange={(v) => patch('acceptedCatSizes', v as CatSize[])}
       />
-
       <ChipsField
         label="Вікові групи"
         options={Object.values(PetAgeGroup).map((v) => ({
@@ -953,7 +838,6 @@ function PolicyPane({ serviceType, policy, setPolicy }: PolicyPaneProps) {
         value={policy.acceptedAgeGroups}
         onChange={(v) => patch('acceptedAgeGroups', v as PetAgeGroup[])}
       />
-
       <ChipsField
         label="Додаткові можливості"
         options={Object.values(AdditionalServiceCapability).map((v) => ({
@@ -968,14 +852,14 @@ function PolicyPane({ serviceType, policy, setPolicy }: PolicyPaneProps) {
 
       <div className="flex items-start gap-2">
         <input
-          id="es-special"
+          id="sf-special"
           type="checkbox"
           checked={policy.acceptsSpecialNeedsPets}
           onChange={(e) => patch('acceptsSpecialNeedsPets', e.target.checked)}
           className="mt-1"
         />
         <div className="flex flex-col">
-          <Label htmlFor="es-special" className="font-medium">
+          <Label htmlFor="sf-special" className="font-medium">
             Приймаю тваринок з особливими потребами
           </Label>
           <span className="text-xs text-zinc-500">
@@ -986,9 +870,9 @@ function PolicyPane({ serviceType, policy, setPolicy }: PolicyPaneProps) {
 
       {serviceType === ServiceType.WALKING && (
         <div className="space-y-1.5">
-          <Label htmlFor="es-max-dogs">Максимум тваринок одночасно</Label>
+          <Label htmlFor="sf-max-dogs">Максимум тваринок одночасно</Label>
           <Input
-            id="es-max-dogs"
+            id="sf-max-dogs"
             type="number"
             min={1}
             max={10}

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
-import { Loader2, ExternalLink } from 'lucide-react'
+import { Loader2, ExternalLink, Pencil } from 'lucide-react'
 import { caretakerProfileService } from '../services/caretaker-profile.service'
 import { serviceOfferingsService } from '../services/service-offerings.service'
 import { certificatesService } from '../services/certificates.service'
@@ -12,19 +12,10 @@ import StatusBanner from '../components/caretaker-dashboard/StatusBanner'
 import SectionCard, {
   type SectionStatus,
 } from '../components/caretaker-dashboard/SectionCard'
-import EditBaseInfoModal from '../components/caretaker-dashboard/EditBaseInfoModal'
-import EditLocationModal from '../components/caretaker-dashboard/EditLocationModal'
-import EditSkillsModal from '../components/caretaker-dashboard/EditSkillsModal'
-import EditServiceModal from '../components/caretaker-dashboard/EditServiceModal'
-import EditCertificatesModal from '../components/caretaker-dashboard/EditCertificatesModal'
 import ServiceListItem from '../components/caretaker-dashboard/ServiceListItem'
-import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { SKILL_LABELS } from '../lib/caretaker-labels'
 import { CERTIFICATE_TYPE_LABELS } from '../lib/certificate-labels'
 import type { CaretakerProfile, Certificate, ServiceOffering } from '../types'
-import { ServiceType } from '@pet-care/shared'
-
-type EditingSection = 'base' | 'location' | 'skills' | 'certificates' | null
 import { cn } from '@/lib/utils'
 
 function baseInfoStatus(profile: CaretakerProfile): SectionStatus {
@@ -66,15 +57,6 @@ export default function CaretakerProfileDashboard() {
   const [services, setServices] = useState<ServiceOffering[]>([])
   const [certificates, setCertificates] = useState<Certificate[]>([])
   const [loading, setLoading] = useState(true)
-  const [editing, setEditing] = useState<EditingSection>(null)
-  const [creatingService, setCreatingService] = useState(false)
-  const [editingService, setEditingService] = useState<ServiceOffering | null>(
-    null,
-  )
-  const [deletingService, setDeletingService] = useState<ServiceOffering | null>(
-    null,
-  )
-  const [serviceError, setServiceError] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -116,48 +98,16 @@ export default function CaretakerProfileDashboard() {
     return <Navigate to="/settings/caretaker-profile/onboarding" replace />
   }
 
-  async function handleConfirmDelete() {
-    if (!deletingService) return
-    try {
-      await serviceOfferingsService.delete(deletingService.id)
-      setServices((prev) => prev.filter((s) => s.id !== deletingService.id))
-      setServiceError(null)
-    } catch (err) {
-      const status = (err as { response?: { status?: number } }).response
-        ?.status
-      if (status === 409) {
-        setServiceError(
-          'Не можна видалити: на послугу є активні або завершені замовлення',
-        )
-      } else {
-        setServiceError('Не вдалося видалити послугу. Спробуйте ще раз.')
-      }
-    } finally {
-      setDeletingService(null)
-    }
+  function go(section: string) {
+    navigate(`/settings/caretaker-profile/edit?section=${section}`)
   }
 
   const sections = [
-    {
-      key: 'base',
-      status: baseInfoStatus(profile),
-    },
-    {
-      key: 'location',
-      status: locationStatus(profile),
-    },
-    {
-      key: 'skills',
-      status: skillsStatus(profile),
-    },
-    {
-      key: 'services',
-      status: servicesStatus(services),
-    },
-    {
-      key: 'certificates',
-      status: certificatesStatus(certificates),
-    },
+    { key: 'base', status: baseInfoStatus(profile) },
+    { key: 'location', status: locationStatus(profile) },
+    { key: 'skills', status: skillsStatus(profile) },
+    { key: 'services', status: servicesStatus(services) },
+    { key: 'certificates', status: certificatesStatus(certificates) },
   ]
 
   const completedCount = sections.filter((s) => s.status === 'complete').length
@@ -194,7 +144,7 @@ export default function CaretakerProfileDashboard() {
           </Button>
         </div>
 
-        <div className="space-y-2">
+        <div className="space-y-2 mb-4">
           <div className="flex items-center justify-between text-sm">
             <span className="font-medium text-zinc-900">Заповненість профілю</span>
             <span className="text-zinc-500">{percent}%</span>
@@ -213,6 +163,14 @@ export default function CaretakerProfileDashboard() {
             />
           </div>
         </div>
+
+        <Button
+          onClick={() => go('base')}
+          className="w-full sm:w-auto"
+        >
+          <Pencil className="w-4 h-4 mr-1" />
+          Редагувати профіль виконавця
+        </Button>
       </div>
 
       <div className="space-y-3">
@@ -223,7 +181,7 @@ export default function CaretakerProfileDashboard() {
           actionLabel={
             baseInfoStatus(profile) === 'empty' ? 'Заповнити' : 'Редагувати'
           }
-          onAction={() => setEditing('base')}
+          onAction={() => go('base')}
         >
           {profile.bio && (
             <p className="text-sm text-zinc-700 line-clamp-2">{profile.bio}</p>
@@ -243,7 +201,7 @@ export default function CaretakerProfileDashboard() {
           actionLabel={
             locationStatus(profile) === 'empty' ? 'Налаштувати' : 'Редагувати'
           }
-          onAction={() => setEditing('location')}
+          onAction={() => go('location')}
         >
           {profile.city && (
             <p className="text-sm text-zinc-700">
@@ -264,7 +222,7 @@ export default function CaretakerProfileDashboard() {
           actionLabel={
             skillsStatus(profile) === 'empty' ? 'Додати' : 'Редагувати'
           }
-          onAction={() => setEditing('skills')}
+          onAction={() => go('skills')}
         >
           {profile.skills.length > 0 && (
             <div className="flex flex-wrap gap-1.5">
@@ -281,35 +239,13 @@ export default function CaretakerProfileDashboard() {
           title="Послуги"
           description="Тарифи, прийняті види тваринок, правила"
           status={servicesStatus(services)}
-          actionLabel={
-            services.length < Object.values(ServiceType).length
-              ? 'Додати'
-              : undefined
-          }
-          onAction={
-            services.length < Object.values(ServiceType).length
-              ? () => setCreatingService(true)
-              : undefined
-          }
+          actionLabel={services.length === 0 ? 'Додати' : 'Редагувати'}
+          onAction={() => go('services')}
         >
-          {serviceError && (
-            <p className="text-sm text-destructive mb-2">{serviceError}</p>
-          )}
           {services.length > 0 && (
             <div className="space-y-2">
               {services.map((s) => (
-                <ServiceListItem
-                  key={s.id}
-                  service={s}
-                  onEdit={(svc) => {
-                    setServiceError(null)
-                    setEditingService(svc)
-                  }}
-                  onDelete={(svc) => {
-                    setServiceError(null)
-                    setDeletingService(svc)
-                  }}
-                />
+                <ServiceListItem key={s.id} service={s} />
               ))}
             </div>
           )}
@@ -320,7 +256,7 @@ export default function CaretakerProfileDashboard() {
           description="Документи, що підтверджують кваліфікацію"
           status={certificatesStatus(certificates)}
           actionLabel={certificates.length === 0 ? 'Додати' : 'Редагувати'}
-          onAction={() => setEditing('certificates')}
+          onAction={() => go('certificates')}
         >
           {certificates.length > 0 && (
             <ul className="space-y-1">
@@ -343,6 +279,8 @@ export default function CaretakerProfileDashboard() {
           title="Галерея робіт"
           description="Фото з ваших попередніх замовлень"
           status="empty"
+          actionLabel="Редагувати"
+          onAction={() => go('gallery')}
         />
       </div>
 
@@ -357,66 +295,6 @@ export default function CaretakerProfileDashboard() {
           </Button>
         )}
       </div>
-
-      <EditBaseInfoModal
-        open={editing === 'base'}
-        onOpenChange={(o) => setEditing(o ? 'base' : null)}
-        profile={profile}
-        onSaved={setProfile}
-      />
-      <EditLocationModal
-        open={editing === 'location'}
-        onOpenChange={(o) => setEditing(o ? 'location' : null)}
-        profile={profile}
-        onSaved={setProfile}
-      />
-      <EditSkillsModal
-        open={editing === 'skills'}
-        onOpenChange={(o) => setEditing(o ? 'skills' : null)}
-        profile={profile}
-        onSaved={setProfile}
-      />
-      <EditCertificatesModal
-        open={editing === 'certificates'}
-        onOpenChange={(o) => setEditing(o ? 'certificates' : null)}
-        caretakerProfileId={profile.id}
-        certificates={certificates}
-        onChange={setCertificates}
-      />
-      <EditServiceModal
-        open={creatingService}
-        onOpenChange={setCreatingService}
-        mode="create"
-        existingServiceTypes={services.map((s) => s.serviceType)}
-        onSaved={(created) => setServices((prev) => [...prev, created])}
-      />
-      {editingService && (
-        <EditServiceModal
-          open={editingService !== null}
-          onOpenChange={(o) => {
-            if (!o) setEditingService(null)
-          }}
-          mode="edit"
-          service={editingService}
-          onSaved={(updated) => {
-            setServices((prev) =>
-              prev.map((s) => (s.id === updated.id ? updated : s)),
-            )
-            setEditingService(null)
-          }}
-        />
-      )}
-      <ConfirmDialog
-        open={deletingService !== null}
-        onOpenChange={(o) => {
-          if (!o) setDeletingService(null)
-        }}
-        title="Видалити послугу?"
-        description="Це назавжди видалить послугу разом з усіма тарифами, надбавками за розмір та додатковими послугами. Активні замовлення цієї послуги не постраждають."
-        confirmLabel="Видалити"
-        variant="destructive"
-        onConfirm={handleConfirmDelete}
-      />
     </div>
   )
 }
