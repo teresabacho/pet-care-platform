@@ -1,0 +1,274 @@
+import { useEffect, useState } from 'react'
+import { Navigate, useNavigate } from 'react-router-dom'
+import { Loader2, ExternalLink } from 'lucide-react'
+import { caretakerProfileService } from '../services/caretaker-profile.service'
+import { serviceOfferingsService } from '../services/service-offerings.service'
+import { useAuthStore } from '../store/authStore'
+import { Button } from '@/components/ui/button'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Badge } from '@/components/ui/badge'
+import StatusBanner from '../components/caretaker-dashboard/StatusBanner'
+import SectionCard, {
+  type SectionStatus,
+} from '../components/caretaker-dashboard/SectionCard'
+import { SKILL_LABELS, SERVICE_TYPE_LABELS } from '../lib/caretaker-labels'
+import type { CaretakerProfile, ServiceOffering } from '../types'
+import { cn } from '@/lib/utils'
+
+function baseInfoStatus(profile: CaretakerProfile): SectionStatus {
+  const hasBio = Boolean(profile.bio && profile.bio.length >= 50)
+  const hasExp =
+    profile.experienceYears !== null && profile.experienceYears !== undefined
+  if (hasBio && hasExp) return 'complete'
+  if (hasBio || hasExp) return 'partial'
+  return 'empty'
+}
+
+function locationStatus(profile: CaretakerProfile): SectionStatus {
+  const hasCoords =
+    profile.serviceLatitude !== null && profile.serviceLongitude !== null
+  const hasRadius = profile.radiusKm !== null && profile.radiusKm > 0
+  if (hasCoords && hasRadius) return 'complete'
+  if (hasCoords || hasRadius) return 'partial'
+  return 'empty'
+}
+
+function skillsStatus(profile: CaretakerProfile): SectionStatus {
+  return profile.skills.length > 0 ? 'complete' : 'empty'
+}
+
+function servicesStatus(services: ServiceOffering[]): SectionStatus {
+  return services.length > 0 ? 'complete' : 'empty'
+}
+
+export default function CaretakerProfileDashboard() {
+  const navigate = useNavigate()
+  const user = useAuthStore((s) => s.user)
+  const [profile, setProfile] = useState<CaretakerProfile | null | undefined>(
+    undefined,
+  )
+  const [services, setServices] = useState<ServiceOffering[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+    async function load() {
+      try {
+        const p = await caretakerProfileService.getMyCaretakerProfile()
+        if (cancelled) return
+        if (p && user) {
+          const svc = await serviceOfferingsService
+            .getByCaretaker(user.id)
+            .catch(() => [])
+          if (cancelled) return
+          setServices(svc)
+        }
+        setProfile(p)
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+    void load()
+    return () => {
+      cancelled = true
+    }
+  }, [user])
+
+  if (loading || profile === undefined) {
+    return (
+      <div className="flex justify-center py-12 text-muted-foreground">
+        <Loader2 className="w-5 h-5 animate-spin" />
+      </div>
+    )
+  }
+
+  if (profile === null) {
+    return <Navigate to="/settings/caretaker-profile/onboarding" replace />
+  }
+
+  const sections = [
+    {
+      key: 'base',
+      status: baseInfoStatus(profile),
+    },
+    {
+      key: 'location',
+      status: locationStatus(profile),
+    },
+    {
+      key: 'skills',
+      status: skillsStatus(profile),
+    },
+    {
+      key: 'services',
+      status: servicesStatus(services),
+    },
+  ]
+
+  const completedCount = sections.filter((s) => s.status === 'complete').length
+  const partialCount = sections.filter((s) => s.status === 'partial').length
+  const percent = Math.round(
+    ((completedCount + partialCount * 0.5) / sections.length) * 100,
+  )
+
+  const initials = user?.firstName
+    ? user.firstName[0].toUpperCase()
+    : (user?.email?.[0]?.toUpperCase() ?? '?')
+
+  const onboardingHref = '/settings/caretaker-profile/onboarding'
+
+  return (
+    <div className="max-w-3xl mx-auto py-8 px-4 space-y-6">
+      <StatusBanner services={services} />
+
+      <div className="rounded-lg border border-zinc-200 bg-white p-6">
+        <div className="flex items-start gap-4 mb-6">
+          <Avatar className="w-16 h-16">
+            {user?.avatarUrl && <AvatarImage src={user.avatarUrl} alt="Avatar" />}
+            <AvatarFallback className="bg-zinc-900 text-white text-xl">
+              {initials}
+            </AvatarFallback>
+          </Avatar>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-xl font-semibold text-zinc-900">
+              {user?.firstName} {user?.lastName}
+            </h1>
+            <p className="text-sm text-zinc-600">{user?.email}</p>
+            {user?.phone && <p className="text-sm text-zinc-600">{user.phone}</p>}
+          </div>
+          <Button variant="outline" size="sm" onClick={() => navigate('/profile/edit')}>
+            Редагувати
+          </Button>
+        </div>
+
+        <div className="space-y-2">
+          <div className="flex items-center justify-between text-sm">
+            <span className="font-medium text-zinc-900">Заповненість профілю</span>
+            <span className="text-zinc-500">{percent}%</span>
+          </div>
+          <div className="w-full bg-zinc-100 rounded-full h-2">
+            <div
+              className={cn(
+                'h-2 rounded-full transition-all',
+                percent >= 80
+                  ? 'bg-emerald-500'
+                  : percent >= 50
+                    ? 'bg-amber-500'
+                    : 'bg-zinc-400',
+              )}
+              style={{ width: `${percent}%` }}
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        <SectionCard
+          title="Базова інформація"
+          description="Опис «Про вас» і досвід роботи"
+          status={baseInfoStatus(profile)}
+        >
+          {profile.bio && (
+            <p className="text-sm text-zinc-700 line-clamp-2">{profile.bio}</p>
+          )}
+          {profile.experienceYears !== null &&
+            profile.experienceYears !== undefined && (
+              <p className="text-xs text-zinc-500 mt-1">
+                Досвід: {profile.experienceYears} р.
+              </p>
+            )}
+        </SectionCard>
+
+        <SectionCard
+          title="Локація і зона роботи"
+          description="Точка на карті та радіус, у якому ви працюєте"
+          status={locationStatus(profile)}
+        >
+          {profile.city && (
+            <p className="text-sm text-zinc-700">
+              {[profile.city, profile.street].filter(Boolean).join(', ')}
+            </p>
+          )}
+          {profile.radiusKm && (
+            <p className="text-xs text-zinc-500 mt-1">
+              Радіус: {profile.radiusKm} км
+            </p>
+          )}
+        </SectionCard>
+
+        <SectionCard
+          title="Навички"
+          description="Опціонально — підвищують довіру і ранжування"
+          status={skillsStatus(profile)}
+        >
+          {profile.skills.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {profile.skills.map((s) => (
+                <Badge key={s} variant="secondary" className="text-xs">
+                  {SKILL_LABELS[s]}
+                </Badge>
+              ))}
+            </div>
+          )}
+        </SectionCard>
+
+        <SectionCard
+          title="Послуги"
+          description="Тарифи, прийняті види тваринок, правила"
+          status={servicesStatus(services)}
+          actionLabel={services.length === 0 ? 'Додати послугу' : undefined}
+          onAction={
+            services.length === 0
+              ? () => navigate(onboardingHref)
+              : undefined
+          }
+        >
+          {services.length > 0 && (
+            <ul className="space-y-1">
+              {services.map((s) => (
+                <li
+                  key={s.id}
+                  className="text-sm text-zinc-700 flex items-center gap-2"
+                >
+                  <span className="font-medium">
+                    {SERVICE_TYPE_LABELS[s.serviceType]}
+                  </span>
+                  {s.tiers && s.tiers.length > 0 && (
+                    <span className="text-xs text-zinc-500">
+                      ({s.tiers.length}{' '}
+                      {s.tiers.length === 1 ? 'тариф' : 'тарифи'})
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </SectionCard>
+
+        <SectionCard
+          title="Сертифікати"
+          description="Документи, що підтверджують кваліфікацію"
+          status="empty"
+        />
+
+        <SectionCard
+          title="Галерея робіт"
+          description="Фото з ваших попередніх замовлень"
+          status="empty"
+        />
+      </div>
+
+      <div className="flex flex-wrap gap-3">
+        {user && (
+          <Button
+            variant="outline"
+            onClick={() => window.open(`/caretaker/${user.id}`, '_blank')}
+          >
+            <ExternalLink className="w-4 h-4 mr-1.5" />
+            Подивитися як клієнт
+          </Button>
+        )}
+      </div>
+    </div>
+  )
+}

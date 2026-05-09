@@ -9,6 +9,7 @@ import PetsPage from './pages/PetsPage'
 import SearchPage from './pages/SearchPage'
 import BookingsPage from './pages/BookingsPage'
 import CaretakerPage from './pages/CaretakerPage'
+import CaretakerProfileDashboard from './pages/CaretakerProfileDashboard'
 import ComingSoonPage from './pages/ComingSoonPage'
 
 export default function App() {
@@ -27,6 +28,10 @@ export default function App() {
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/pets" element={<PetsPage />} />
             <Route path="/bookings" element={<BookingsPage />} />
+            <Route
+              path="/settings/caretaker-profile"
+              element={<CaretakerProfileDashboard />}
+            />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
