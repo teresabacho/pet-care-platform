@@ -4,6 +4,7 @@ import type {
   PriceUnit,
   BookingStatus,
   DayType,
+  Language,
   MediaOwnerType,
   MediaType,
   MediaBucket,
@@ -74,6 +75,9 @@ export interface CaretakerProfile {
   serviceLongitude: number | null
   radiusKm: number | null
   skills: CaretakerSkill[]
+  languages: Language[]
+  availabilityFilledUntil: string | null
+  availabilityUpdatedAt: string | null
   addressIsPublic: boolean
   isVerified: boolean
   avgRating: string | null

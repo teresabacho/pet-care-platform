@@ -3,6 +3,7 @@ import {
   AddonPriceUnit,
   EXPERIENCE_TEMPLATES,
   INCLUSION_TEMPLATES,
+  LANGUAGE_LABELS,
   ServiceType,
   SKILL_TAGS_LIBRARY,
 } from '@pet-care/shared'
@@ -103,7 +104,10 @@ export function generateAvailability(caretakerId: string, weekStart: Date): bool
 export function getInfoCards(profile: CaretakerProfile): InfoCard[] {
   const responseHours = (hash(profile.id) % 3) + 1
   const completed = (hash(profile.id + 'b') % 200) + 50
-  const langs = hash(profile.id + 'l') % 3 === 0 ? 'Укр, Англ' : 'Українська'
+  const langs =
+    profile.languages.length > 0
+      ? profile.languages.map((l) => LANGUAGE_LABELS[l]).join(', ')
+      : '—'
 
   return [
     {

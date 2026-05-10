@@ -1,10 +1,13 @@
+import { Language } from '@pet-care/shared'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { LanguagesForm } from './LanguagesForm'
 
 export interface BaseInfoFormValue {
   bio: string
   experienceYears: number | null
+  languages: Language[]
 }
 
 interface BaseInfoFormProps {
@@ -60,6 +63,17 @@ export function BaseInfoForm({
           }}
           placeholder="0"
           className="w-32"
+        />
+      </div>
+
+      <div className="space-y-1.5">
+        <Label>Мови спілкування</Label>
+        <p className="text-xs text-zinc-500">
+          Оберіть усі, якими вільно говорите з клієнтами.
+        </p>
+        <LanguagesForm
+          value={value.languages}
+          onChange={(next) => onChange({ ...value, languages: next })}
         />
       </div>
     </div>

@@ -178,6 +178,7 @@ export default function Step5Preview() {
         bio: formData.bio.trim(),
         experienceYears: formData.experienceYears ?? undefined,
         skills: formData.skills,
+        languages: formData.languages,
         addressIsPublic: formData.addressIsPublic,
         serviceLatitude: formData.serviceLatitude ?? undefined,
         serviceLongitude: formData.serviceLongitude ?? undefined,

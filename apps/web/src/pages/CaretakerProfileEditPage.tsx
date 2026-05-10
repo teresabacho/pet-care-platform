@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import {
+  CalendarCheck,
   FolderHeart,
   Image as ImageIcon,
   Layers,
@@ -30,6 +31,7 @@ import {
 import { MediaGallery } from '../components/caretaker-form/MediaGallery'
 import { ServicesSection } from '../components/caretaker-edit/ServicesSection'
 import { CertificatesSection } from '../components/caretaker-edit/CertificatesSection'
+import { AvailabilitySection } from '../components/caretaker-edit/AvailabilitySection'
 import {
   EditPageLayout,
   type EditPageSection,
@@ -41,6 +43,7 @@ type SectionId =
   | 'location'
   | 'skills'
   | 'services'
+  | 'availability'
   | 'certificates'
   | 'gallery'
 
@@ -49,6 +52,7 @@ const SECTIONS: EditPageSection[] = [
   { id: 'location', label: 'Локація', Icon: MapPin },
   { id: 'skills', label: 'Навички', Icon: Sparkles },
   { id: 'services', label: 'Послуги', Icon: Layers },
+  { id: 'availability', label: 'Доступність', Icon: CalendarCheck },
   { id: 'certificates', label: 'Сертифікати', Icon: FolderHeart },
   { id: 'gallery', label: 'Галерея', Icon: ImageIcon },
 ]
@@ -135,6 +139,9 @@ export default function CaretakerProfileEditPage() {
       {section === 'services' && (
         <ServicesSection services={services} onChange={setServices} />
       )}
+      {section === 'availability' && (
+        <AvailabilitySection profile={profile} onSaved={setProfile} />
+      )}
       {section === 'certificates' && (
         <CertificatesSection
           caretakerProfileId={profile.id}
@@ -186,15 +193,20 @@ function BaseInfoSection({ profile, onSaved }: ProfileSectionProps) {
   const [value, setValue] = useState<BaseInfoFormValue>({
     bio: profile.bio ?? '',
     experienceYears: profile.experienceYears,
+    languages: profile.languages,
   })
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
 
   const bioTooShort = value.bio.length > 0 && value.bio.length < 50
+  const languagesChanged =
+    value.languages.length !== profile.languages.length ||
+    [...value.languages].sort().some((l, i) => l !== [...profile.languages].sort()[i])
   const dirty =
     value.bio !== (profile.bio ?? '') ||
-    value.experienceYears !== profile.experienceYears
+    value.experienceYears !== profile.experienceYears ||
+    languagesChanged
 
   async function handleSave() {
     if (bioTooShort) return
@@ -206,6 +218,7 @@ function BaseInfoSection({ profile, onSaved }: ProfileSectionProps) {
         bio: value.bio.trim() || undefined,
         experienceYears:
           value.experienceYears === null ? undefined : value.experienceYears,
+        languages: value.languages,
       })
       onSaved(next)
       setSaved(true)

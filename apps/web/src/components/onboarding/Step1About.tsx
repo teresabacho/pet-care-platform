@@ -10,7 +10,7 @@ const MIN_BIO_LENGTH = 50
 export default function Step1About() {
   const { formData, setField, nextStep, prevStep } =
     useCaretakerOnboardingStore()
-  const { bio, experienceYears, skills, galleryFiles } = formData
+  const { bio, experienceYears, skills, languages, galleryFiles } = formData
 
   const isValid =
     bio.trim().length >= MIN_BIO_LENGTH && experienceYears !== null
@@ -28,10 +28,11 @@ export default function Step1About() {
       </div>
 
       <BaseInfoForm
-        value={{ bio, experienceYears }}
+        value={{ bio, experienceYears, languages }}
         onChange={(v) => {
           setField('bio', v.bio)
           setField('experienceYears', v.experienceYears)
+          setField('languages', v.languages)
         }}
         bioMinLength={MIN_BIO_LENGTH}
       />

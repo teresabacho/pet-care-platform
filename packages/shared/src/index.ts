@@ -42,6 +42,29 @@ export enum DayType {
     HOLIDAY = 'HOLIDAY',
 }
 
+// Мови, якими caretaker може спілкуватися з клієнтом. Коди ISO 639-1.
+// Список свідомо обмежений — можна розширити, коли реальні користувачі
+// почнуть запитувати інші.
+export enum Language {
+    UK = 'UK',
+    EN = 'EN',
+    RU = 'RU',
+    PL = 'PL',
+    DE = 'DE',
+    FR = 'FR',
+    ES = 'ES',
+}
+
+export const LANGUAGE_LABELS: Record<Language, string> = {
+    [Language.UK]: 'Українська',
+    [Language.EN]: 'English',
+    [Language.RU]: 'Російська',
+    [Language.PL]: 'Polski',
+    [Language.DE]: 'Deutsch',
+    [Language.FR]: 'Français',
+    [Language.ES]: 'Español',
+};
+
 export enum TrackingSessionStatus {
     ACTIVE = 'ACTIVE',
     COMPLETED = 'COMPLETED',

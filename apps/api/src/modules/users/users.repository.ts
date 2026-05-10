@@ -31,16 +31,28 @@ export class UsersRepository {
         }) as Promise<User>;
     }
 
+    setAvatarUrl(id: string, avatarUrl: string | null): Promise<void> {
+        return this.userRepo
+            .update(id, { avatarUrl: avatarUrl as string })
+            .then(() => undefined);
+    }
+
     findCaretakerProfileByUserId(userId: string): Promise<CaretakerProfile | null> {
         return this.caretakerProfileRepo.findOne({ where: { userId } });
     }
 
-    createCaretakerProfile(userId: string, dto: CreateCaretakerProfileDto): Promise<CaretakerProfile> {
+    createCaretakerProfile(
+        userId: string,
+        dto: CreateCaretakerProfileDto & { availabilityUpdatedAt?: Date },
+    ): Promise<CaretakerProfile> {
         const profile = this.caretakerProfileRepo.create({ userId, ...dto });
         return this.caretakerProfileRepo.save(profile);
     }
 
-    async updateCaretakerProfile(userId: string, dto: UpdateCaretakerProfileDto): Promise<CaretakerProfile> {
+    async updateCaretakerProfile(
+        userId: string,
+        dto: UpdateCaretakerProfileDto & { availabilityUpdatedAt?: Date },
+    ): Promise<CaretakerProfile> {
         await this.caretakerProfileRepo.update({ userId }, dto);
         return this.caretakerProfileRepo.findOne({ where: { userId } }) as Promise<CaretakerProfile>;
     }
