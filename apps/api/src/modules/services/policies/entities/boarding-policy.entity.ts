@@ -7,10 +7,13 @@ import {
 } from 'typeorm';
 import {
     AdditionalServiceCapability,
+    BirdType,
     CatSize,
     DogSize,
     HomeCondition,
+    OtherPetType,
     PetAgeGroup,
+    RodentType,
 } from '@pet-care/shared';
 import { ServiceOffering } from '../../entities/service-offering.entity';
 
@@ -43,4 +46,13 @@ export class BoardingPolicy {
 
     @Column({ type: 'text', array: true, default: '{}', name: 'home_conditions' })
     homeConditions: HomeCondition[];
+
+    @Column({ type: 'text', array: true, default: '{}', name: 'accepted_rodent_types' })
+    acceptedRodentTypes: RodentType[];
+
+    @Column({ type: 'text', array: true, default: '{}', name: 'accepted_bird_types' })
+    acceptedBirdTypes: BirdType[];
+
+    @Column({ type: 'text', array: true, default: '{}', name: 'accepted_other_pet_types' })
+    acceptedOtherPetTypes: OtherPetType[];
 }

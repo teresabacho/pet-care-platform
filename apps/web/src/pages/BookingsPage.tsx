@@ -1,10 +1,25 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
-import { BookingStatus, ServiceType } from '@pet-care/shared'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { BookingStatus, PaymentStatus, ServiceType } from '@pet-care/shared'
 import { bookingsService } from '../services/bookings.service'
+import { paymentsService, submitToLiqPay } from '../services/payments.service'
 import { useAuthStore } from '../store/authStore'
 import ReviewForm from '../components/ReviewForm'
 import type { Booking } from '../types'
+
+const PAYMENT_LABELS: Record<PaymentStatus, string> = {
+  [PaymentStatus.AWAITING_PAYMENT]: 'Очікує оплати',
+  [PaymentStatus.PAID]: 'Оплачено',
+  [PaymentStatus.FAILED]: 'Помилка оплати',
+  [PaymentStatus.REFUNDED]: 'Повернено',
+}
+
+const PAYMENT_COLORS: Record<PaymentStatus, string> = {
+  [PaymentStatus.AWAITING_PAYMENT]: 'bg-amber-100 text-amber-700',
+  [PaymentStatus.PAID]: 'bg-emerald-100 text-emerald-700',
+  [PaymentStatus.FAILED]: 'bg-red-100 text-red-700',
+  [PaymentStatus.REFUNDED]: 'bg-gray-100 text-gray-600',
+}
 
 const STATUS_LABELS: Record<BookingStatus, string> = {
   [BookingStatus.PENDING]: 'Очікує підтвердження',
@@ -42,18 +57,75 @@ function formatDate(dateStr: string) {
 
 export default function BookingsPage() {
   const user = useAuthStore((s) => s.user)
+  const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [bookings, setBookings] = useState<Booking[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [activeId, setActiveId] = useState<string | null>(null)
+  const [activeId, setActiveId] = useState<string | null>(
+    searchParams.get('highlight') ?? searchParams.get('bookingId'),
+  )
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [reviewFormId, setReviewFormId] = useState<string | null>(null)
   const [reviewedIds, setReviewedIds] = useState<Set<string>>(new Set())
+  const [paymentNotice, setPaymentNotice] = useState<string | null>(null)
 
   useEffect(() => {
     bookingsService.getMyBookings()
       .then(setBookings)
       .finally(() => setIsLoading(false))
   }, [])
+
+  // Якщо повернулися з LiqPay (?paid=1&bookingId=...), опитуємо статус.
+  useEffect(() => {
+    const paidFlag = searchParams.get('paid')
+    const targetId = searchParams.get('bookingId')
+    if (paidFlag !== '1' || !targetId) return
+    setPaymentNotice('Перевіряємо статус оплати…')
+    paymentsService
+      .checkStatus(targetId)
+      .then(async (res) => {
+        // оновлюємо локальний список — перезавантажуємо
+        const fresh = await bookingsService.getMyBookings()
+        setBookings(fresh)
+        if (res.paymentStatus === PaymentStatus.PAID) {
+          setPaymentNotice('Оплату успішно отримано.')
+        } else if (res.paymentStatus === PaymentStatus.FAILED) {
+          setPaymentNotice('Оплата не пройшла. Спробуйте ще раз.')
+        } else {
+          setPaymentNotice(
+            'Оплата ще обробляється. Спробуйте оновити сторінку за хвилину.',
+          )
+        }
+      })
+      .catch(() => setPaymentNotice('Не вдалося перевірити статус оплати.'))
+      .finally(() => {
+        const next = new URLSearchParams(searchParams)
+        next.delete('paid')
+        next.delete('bookingId')
+        setSearchParams(next, { replace: true })
+      })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  async function handlePay(bookingId: string) {
+    setActionLoading(`pay-${bookingId}`)
+    try {
+      const invoice = await paymentsService.createInvoice(bookingId)
+      if (invoice.mode === 'stub') {
+        // Внутрішня заглушка — navigate замість full-page submit
+        navigate(invoice.checkoutUrl)
+        return
+      }
+      submitToLiqPay(invoice)
+      // success-шлях не очищає loading — браузер уже редіректить на LiqPay
+    } catch (err) {
+      const msg =
+        (err as { response?: { data?: { message?: string } } })?.response?.data
+          ?.message ?? 'Не вдалося створити інвойс'
+      setPaymentNotice(typeof msg === 'string' ? msg : 'Помилка оплати')
+      setActionLoading(null)
+    }
+  }
 
   const updateBooking = (updated: Booking) =>
     setBookings((prev) => prev.map((b) => (b.id === updated.id ? updated : b)))
@@ -66,6 +138,23 @@ export default function BookingsPage() {
     } finally {
       setActionLoading(null)
     }
+  }
+
+  const cancelWithReason = async (bookingId: string, key: string) => {
+    const reason = window.prompt(
+      'Вкажіть причину скасування (буде показано іншій стороні):',
+      '',
+    )
+    if (!reason || !reason.trim()) return
+    await doAction(
+      () =>
+        bookingsService.updateStatus(
+          bookingId,
+          BookingStatus.CANCELLED,
+          reason.trim(),
+        ),
+      key,
+    )
   }
 
   const renderActions = (booking: Booking) => {
@@ -89,19 +178,30 @@ export default function BookingsPage() {
       </button>
     )
 
+    const cancelBtn = (key: string) => (
+      <button
+        key={key}
+        disabled={!!actionLoading}
+        onClick={() => cancelWithReason(booking.id, key)}
+        className="text-xs px-3 py-1.5 rounded-lg border border-red-300 text-red-600 hover:bg-red-50 disabled:opacity-40"
+      >
+        {busy(key) ? '...' : 'Скасувати'}
+      </button>
+    )
+
     switch (booking.status) {
       case BookingStatus.PENDING:
         return (
           <>
             {isCaretaker && btn('Підтвердити', () => bookingsService.updateStatus(booking.id, BookingStatus.CONFIRMED), `confirm-${booking.id}`)}
-            {(isOwner || isCaretaker) && btn('Скасувати', () => bookingsService.updateStatus(booking.id, BookingStatus.CANCELLED), `cancel-${booking.id}`, true)}
+            {(isOwner || isCaretaker) && cancelBtn(`cancel-${booking.id}`)}
           </>
         )
       case BookingStatus.CONFIRMED:
         return (
           <>
             {isCaretaker && btn('Почати передачу', () => bookingsService.updateStatus(booking.id, BookingStatus.HANDOVER_PENDING), `handover-start-${booking.id}`)}
-            {(isOwner || isCaretaker) && btn('Скасувати', () => bookingsService.updateStatus(booking.id, BookingStatus.CANCELLED), `cancel-${booking.id}`, true)}
+            {(isOwner || isCaretaker) && cancelBtn(`cancel-${booking.id}`)}
           </>
         )
       case BookingStatus.HANDOVER_PENDING: {
@@ -150,6 +250,19 @@ export default function BookingsPage() {
   return (
     <div className="max-w-2xl mx-auto">
       <h1 className="text-2xl font-bold mb-6">Замовлення</h1>
+
+      {paymentNotice && (
+        <div className="mb-4 px-4 py-3 rounded-lg bg-amber-50 border border-amber-200 text-sm text-amber-900 flex items-start justify-between gap-3">
+          <span>{paymentNotice}</span>
+          <button
+            type="button"
+            onClick={() => setPaymentNotice(null)}
+            className="text-amber-700 hover:text-amber-900"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {bookings.length === 0 ? (
         <div className="text-center py-12 bg-white rounded-xl shadow">
@@ -202,6 +315,11 @@ export default function BookingsPage() {
                       <div>
                         <p className="text-xs text-gray-400">Вартість</p>
                         <p className="font-semibold">{booking.price} грн</p>
+                        <span
+                          className={`inline-block mt-0.5 text-[10px] px-1.5 py-0.5 rounded ${PAYMENT_COLORS[booking.paymentStatus]}`}
+                        >
+                          {PAYMENT_LABELS[booking.paymentStatus]}
+                        </span>
                       </div>
                       {booking.pet && (
                         <div>
@@ -215,12 +333,41 @@ export default function BookingsPage() {
                         {booking.notes}
                       </p>
                     )}
+                    {booking.cancellationReason && (
+                      <div className="rounded-lg bg-red-50 border border-red-200 px-3 py-2">
+                        <p className="text-[11px] uppercase tracking-wide text-red-700 mb-0.5">
+                          Причина скасування
+                          {booking.cancelledByUserId === user?.id
+                            ? ' (ви)'
+                            : booking.cancelledByUserId === booking.caretakerId
+                              ? ' (доглядальник)'
+                              : booking.cancelledByUserId === booking.ownerId
+                                ? ' (власник)'
+                                : ''}
+                        </p>
+                        <p className="text-sm text-red-900">
+                          {booking.cancellationReason}
+                        </p>
+                      </div>
+                    )}
                     {isOwner && (
                       <Link
                         to={`/caretaker/${booking.caretakerId}`}
                         className="text-xs text-blue-600 hover:underline"
                       >
                         Профіль виконавця →
+                      </Link>
+                    )}
+                    {(booking.status === BookingStatus.IN_PROGRESS ||
+                      booking.status === BookingStatus.RETURN_PENDING ||
+                      booking.status === BookingStatus.COMPLETED) && (
+                      <Link
+                        to={`/bookings/${booking.id}/tracking`}
+                        className="inline-block text-xs px-3 py-1.5 rounded-lg bg-zinc-900 text-white hover:bg-zinc-800 font-medium"
+                      >
+                        {booking.status === BookingStatus.IN_PROGRESS
+                          ? 'Live-трекінг'
+                          : 'Маршрут прогулянки'}
                       </Link>
                     )}
                     {isOwner && booking.status === BookingStatus.COMPLETED && (
@@ -244,7 +391,23 @@ export default function BookingsPage() {
                         </button>
                       )
                     )}
-                    <div className="flex flex-wrap gap-2 pt-1">
+                    <div className="flex flex-wrap gap-2 pt-1 items-center">
+                      {isOwner &&
+                        booking.paymentStatus !== PaymentStatus.PAID &&
+                        booking.status !== BookingStatus.CANCELLED && (
+                          <button
+                            type="button"
+                            onClick={() => handlePay(booking.id)}
+                            disabled={actionLoading === `pay-${booking.id}`}
+                            className="text-xs px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-medium disabled:opacity-60"
+                          >
+                            {actionLoading === `pay-${booking.id}`
+                              ? '...'
+                              : booking.paymentStatus === PaymentStatus.FAILED
+                                ? 'Спробувати оплату ще раз'
+                                : 'Оплатити'}
+                          </button>
+                        )}
                       {renderActions(booking)}
                     </div>
                   </div>

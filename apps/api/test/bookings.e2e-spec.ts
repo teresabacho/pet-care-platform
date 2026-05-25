@@ -8,8 +8,17 @@ import { Session } from '../src/modules/auth/entities/session.entity';
 import { User } from '../src/modules/auth/entities/user.entity';
 import { Pet } from '../src/modules/pets/entities/pet.entity';
 import { Booking } from '../src/modules/bookings/entities/booking.entity';
+import { CaretakerProfile } from '../src/modules/users/entities/caretaker-profile.entity';
+import { ServiceOffering } from '../src/modules/services/entities/service-offering.entity';
 import { AppModule } from '../src/app.module';
-import { BookingStatus, ServiceType } from '@pet-care/shared';
+import {
+    AddonPriceUnit,
+    BookingStatus,
+    DogSize,
+    PetAgeGroup,
+    PriceUnit,
+    ServiceType,
+} from '@pet-care/shared';
 
 describe('Bookings (e2e)', () => {
     let app: INestApplication;
@@ -17,11 +26,18 @@ describe('Bookings (e2e)', () => {
     let sessionRepo: Repository<Session>;
     let petRepo: Repository<Pet>;
     let bookingRepo: Repository<Booking>;
+    let profileRepo: Repository<CaretakerProfile>;
+    let offeringRepo: Repository<ServiceOffering>;
 
     let ownerToken: string;
     let caretakerToken: string;
     let ownerId: string;
     let caretakerId: string;
+    let caretakerProfileId: string;
+    let offeringId: string;
+    let walkingTierId: string;
+    let petSittingTierId: string;
+    let addonId: string;
     let petId: string;
     let bookingId: string;
 
@@ -42,6 +58,8 @@ describe('Bookings (e2e)', () => {
         sessionRepo = moduleFixture.get(getRepositoryToken(Session));
         petRepo = moduleFixture.get(getRepositoryToken(Pet));
         bookingRepo = moduleFixture.get(getRepositoryToken(Booking));
+        profileRepo = moduleFixture.get(getRepositoryToken(CaretakerProfile));
+        offeringRepo = moduleFixture.get(getRepositoryToken(ServiceOffering));
 
         const ownerRes = await request(app.getHttpServer())
             .post('/auth/register')
@@ -61,16 +79,65 @@ describe('Bookings (e2e)', () => {
             .get('/auth/me').set('Authorization', `Bearer ${caretakerToken}`);
         caretakerId = caretakerMe.body.id;
 
+        // Caretaker profile + WALKING offering з tier і addon-ом
+        const profileRes = await request(app.getHttpServer())
+            .post('/users/me/caretaker-profile')
+            .set('Authorization', `Bearer ${caretakerToken}`)
+            .send({ bio: 'Test', serviceLatitude: 50.45, serviceLongitude: 30.52, radiusKm: 5 });
+        caretakerProfileId = profileRes.body.id;
+
+        const offeringRes = await request(app.getHttpServer())
+            .post('/services')
+            .set('Authorization', `Bearer ${caretakerToken}`)
+            .send({
+                serviceType: ServiceType.WALKING,
+                tiers: [{ durationMinutes: 60, basePrice: 200, priceUnit: PriceUnit.PER_SESSION }],
+                sizeSurcharges: [
+                    { petSpecies: 'DOG', size: DogSize.MEDIUM, surchargeAmount: 0 },
+                    { petSpecies: 'DOG', size: DogSize.LARGE, surchargeAmount: 100 },
+                ],
+                addons: [
+                    { name: 'Помити лапи', price: 50, priceUnit: AddonPriceUnit.PER_BOOKING },
+                ],
+                walkingPolicy: {
+                    acceptedDogSizes: [DogSize.MEDIUM, DogSize.LARGE],
+                    acceptedAgeGroups: [PetAgeGroup.ADULT],
+                    acceptsSpecialNeedsPets: false,
+                    maxDogsAtOnce: 1,
+                },
+            });
+        offeringId = offeringRes.body.id;
+        walkingTierId = offeringRes.body.tiers[0].id;
+        addonId = offeringRes.body.addons[0].id;
+
+        // PET_SITTING offering (потрібен у тесті 400 для confirm-handover)
+        const petSittingOffering = await request(app.getHttpServer())
+            .post('/services')
+            .set('Authorization', `Bearer ${caretakerToken}`)
+            .send({
+                serviceType: ServiceType.PET_SITTING,
+                tiers: [{ basePrice: 600, priceUnit: PriceUnit.PER_DAY }],
+                petSittingPolicy: {
+                    acceptedDogSizes: [DogSize.MEDIUM],
+                    acceptedCatSizes: [],
+                    acceptedAgeGroups: [PetAgeGroup.ADULT],
+                    acceptsSpecialNeedsPets: false,
+                },
+            });
+        petSittingTierId = petSittingOffering.body.tiers[0].id;
+
         const petRes = await request(app.getHttpServer())
             .post('/pets')
             .set('Authorization', `Bearer ${ownerToken}`)
-            .send({ name: 'Тестовий Барсик', species: 'Кіт' });
+            .send({ name: 'Тестовий Барсик', species: 'dog', size: DogSize.MEDIUM });
         petId = petRes.body.id;
     });
 
     afterAll(async () => {
         await bookingRepo.delete({ ownerId });
         await petRepo.delete({ ownerId });
+        await offeringRepo.delete({ caretakerId: caretakerProfileId });
+        await profileRepo.delete({ id: caretakerProfileId });
         await sessionRepo.delete({ userId: ownerId });
         await sessionRepo.delete({ userId: caretakerId });
         await userRepo.delete({ id: ownerId });
@@ -79,7 +146,7 @@ describe('Bookings (e2e)', () => {
     });
 
     describe('POST /bookings', () => {
-        it('should create a booking with PENDING status', async () => {
+        it('обчислює ціну з tier + addon (MEDIUM dog → 200 + 50 = 250)', async () => {
             const res = await request(app.getHttpServer())
                 .post('/bookings')
                 .set('Authorization', `Bearer ${ownerToken}`)
@@ -87,9 +154,10 @@ describe('Bookings (e2e)', () => {
                     caretakerId,
                     petId,
                     serviceType: ServiceType.WALKING,
+                    tierId: walkingTierId,
+                    addonIds: [addonId],
                     scheduledStart: '2026-04-01T10:00:00.000Z',
                     scheduledEnd: '2026-04-01T11:00:00.000Z',
-                    price: 150,
                     notes: 'Тестовий вигул',
                 })
                 .expect(201);
@@ -97,12 +165,21 @@ describe('Bookings (e2e)', () => {
             expect(res.body.status).toBe(BookingStatus.PENDING);
             expect(res.body.ownerId).toBe(ownerId);
             expect(res.body.caretakerId).toBe(caretakerId);
+            expect(Number(res.body.price)).toBe(250);
+            expect(res.body.tierId).toBe(walkingTierId);
+            expect(res.body.addonIds).toEqual([addonId]);
+            // Не перевизначаємо bookingId якщо вже встановлений (для подальших тестів стейт-машини)
             bookingId = res.body.id;
         });
 
-        it('should return 401 without token', async () => {
+        it('повертає 401 без токена', async () => {
             await request(app.getHttpServer()).post('/bookings')
-                .send({ caretakerId, petId, serviceType: ServiceType.WALKING, scheduledStart: '2026-04-01T10:00:00.000Z', scheduledEnd: '2026-04-01T11:00:00.000Z', price: 100 })
+                .send({
+                    caretakerId, petId, serviceType: ServiceType.WALKING,
+                    tierId: walkingTierId,
+                    scheduledStart: '2026-04-01T10:00:00.000Z',
+                    scheduledEnd: '2026-04-01T11:00:00.000Z',
+                })
                 .expect(401);
         });
     });
@@ -198,7 +275,12 @@ describe('Bookings (e2e)', () => {
             const otherRes = await request(app.getHttpServer())
                 .post('/bookings')
                 .set('Authorization', `Bearer ${ownerToken}`)
-                .send({ caretakerId, petId, serviceType: ServiceType.PET_SITTING, scheduledStart: '2026-06-01T10:00:00.000Z', scheduledEnd: '2026-06-03T10:00:00.000Z', price: 600 });
+                .send({
+                    caretakerId, petId, serviceType: ServiceType.PET_SITTING,
+                    tierId: petSittingTierId,
+                    scheduledStart: '2026-06-01T10:00:00.000Z',
+                    scheduledEnd: '2026-06-03T10:00:00.000Z',
+                });
             const otherId = otherRes.body.id;
 
             await request(app.getHttpServer())

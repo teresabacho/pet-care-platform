@@ -4,9 +4,13 @@ import { EntityManager, Repository } from 'typeorm';
 import { WalkingPolicy } from './entities/walking-policy.entity';
 import { PetSittingPolicy } from './entities/pet-sitting-policy.entity';
 import { BoardingPolicy } from './entities/boarding-policy.entity';
+import { GroomingPolicy } from './entities/grooming-policy.entity';
+import { VetVisitPolicy } from './entities/vet-visit-policy.entity';
 import { CreateWalkingPolicyDto } from './dto/create-walking-policy.dto';
 import { CreatePetSittingPolicyDto } from './dto/create-pet-sitting-policy.dto';
 import { CreateBoardingPolicyDto } from './dto/create-boarding-policy.dto';
+import { CreateGroomingPolicyDto } from './dto/create-grooming-policy.dto';
+import { CreateVetVisitPolicyDto } from './dto/create-vet-visit-policy.dto';
 
 @Injectable()
 export class WalkingPoliciesRepository {
@@ -60,6 +64,9 @@ export class PetSittingPoliciesRepository {
             acceptedAgeGroups: dto.acceptedAgeGroups,
             acceptsSpecialNeedsPets: dto.acceptsSpecialNeedsPets,
             capabilities: dto.capabilities ?? [],
+            acceptedRodentTypes: dto.acceptedRodentTypes ?? [],
+            acceptedBirdTypes: dto.acceptedBirdTypes ?? [],
+            acceptedOtherPetTypes: dto.acceptedOtherPetTypes ?? [],
         });
         return manager.save(PetSittingPolicy, entity);
     }
@@ -89,7 +96,72 @@ export class BoardingPoliciesRepository {
             acceptsSpecialNeedsPets: dto.acceptsSpecialNeedsPets,
             capabilities: dto.capabilities ?? [],
             homeConditions: dto.homeConditions,
+            acceptedRodentTypes: dto.acceptedRodentTypes ?? [],
+            acceptedBirdTypes: dto.acceptedBirdTypes ?? [],
+            acceptedOtherPetTypes: dto.acceptedOtherPetTypes ?? [],
         });
         return manager.save(BoardingPolicy, entity);
+    }
+}
+
+@Injectable()
+export class GroomingPoliciesRepository {
+    constructor(
+        @InjectRepository(GroomingPolicy)
+        private readonly repo: Repository<GroomingPolicy>,
+    ) {}
+
+    findByOfferingId(serviceOfferingId: string): Promise<GroomingPolicy | null> {
+        return this.repo.findOne({ where: { serviceOfferingId } });
+    }
+
+    create(
+        manager: EntityManager,
+        serviceOfferingId: string,
+        dto: CreateGroomingPolicyDto,
+    ): Promise<GroomingPolicy> {
+        const entity = manager.create(GroomingPolicy, {
+            serviceOfferingId,
+            acceptedDogSizes: dto.acceptedDogSizes,
+            acceptedCatSizes: dto.acceptedCatSizes,
+            acceptedAgeGroups: dto.acceptedAgeGroups,
+            acceptsSpecialNeedsPets: dto.acceptsSpecialNeedsPets,
+            capabilities: dto.capabilities ?? [],
+            acceptedRodentTypes: dto.acceptedRodentTypes ?? [],
+            acceptedBirdTypes: dto.acceptedBirdTypes ?? [],
+            acceptedOtherPetTypes: dto.acceptedOtherPetTypes ?? [],
+        });
+        return manager.save(GroomingPolicy, entity);
+    }
+}
+
+@Injectable()
+export class VetVisitPoliciesRepository {
+    constructor(
+        @InjectRepository(VetVisitPolicy)
+        private readonly repo: Repository<VetVisitPolicy>,
+    ) {}
+
+    findByOfferingId(serviceOfferingId: string): Promise<VetVisitPolicy | null> {
+        return this.repo.findOne({ where: { serviceOfferingId } });
+    }
+
+    create(
+        manager: EntityManager,
+        serviceOfferingId: string,
+        dto: CreateVetVisitPolicyDto,
+    ): Promise<VetVisitPolicy> {
+        const entity = manager.create(VetVisitPolicy, {
+            serviceOfferingId,
+            acceptedDogSizes: dto.acceptedDogSizes,
+            acceptedCatSizes: dto.acceptedCatSizes,
+            acceptedAgeGroups: dto.acceptedAgeGroups,
+            acceptsSpecialNeedsPets: dto.acceptsSpecialNeedsPets,
+            capabilities: dto.capabilities ?? [],
+            acceptedRodentTypes: dto.acceptedRodentTypes ?? [],
+            acceptedBirdTypes: dto.acceptedBirdTypes ?? [],
+            acceptedOtherPetTypes: dto.acceptedOtherPetTypes ?? [],
+        });
+        return manager.save(VetVisitPolicy, entity);
     }
 }

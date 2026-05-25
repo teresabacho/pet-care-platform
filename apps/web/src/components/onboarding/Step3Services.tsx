@@ -58,7 +58,12 @@ function dataToFormValue(
       capabilities: [],
       maxDogsAtOnce: data.maxPetsAtOnce,
       homeConditions: data.homeConditions,
+      acceptedRodentTypes: data.acceptedRodentTypes,
+      acceptedBirdTypes: data.acceptedBirdTypes,
+      acceptedOtherPetTypes: data.acceptedOtherPetTypes,
     },
+    experienceDescription: data.experienceDescription,
+    experienceSkills: data.experienceSkills,
   }
 }
 
@@ -85,6 +90,11 @@ function formValueToData(value: ServiceFormValue): ServiceFormData {
     acceptsSpecialNeedsPets: value.policy.acceptsSpecialNeedsPets,
     homeConditions: value.policy.homeConditions,
     maxPetsAtOnce: value.policy.maxDogsAtOnce,
+    acceptedRodentTypes: value.policy.acceptedRodentTypes,
+    acceptedBirdTypes: value.policy.acceptedBirdTypes,
+    acceptedOtherPetTypes: value.policy.acceptedOtherPetTypes,
+    experienceDescription: value.experienceDescription,
+    experienceSkills: value.experienceSkills,
   }
 }
 

@@ -2,7 +2,6 @@ import {
     ArrayUnique,
     IsArray,
     IsBoolean,
-    IsDateString,
     IsEnum,
     IsIn,
     IsNumber,
@@ -53,13 +52,6 @@ export class CreateCaretakerProfileDto {
     @ArrayUnique()
     @IsEnum(Language, { each: true })
     languages?: Language[];
-
-    @ApiPropertyOptional({
-        description: 'Дата (ISO 8601), до якої caretaker гарантує доступність.',
-    })
-    @IsOptional()
-    @IsDateString()
-    availabilityFilledUntil?: string;
 
     @ApiPropertyOptional({
         description: 'Чи показувати точну адресу публічно. Якщо false — координати обфускуються.',

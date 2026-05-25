@@ -2,6 +2,7 @@ import { Body, Controller, Get, Param, Patch, Post, Request, UseGuards } from '@
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { CreateCaretakerProfileDto } from './dto/create-caretaker-profile.dto';
 import { UpdateCaretakerProfileDto } from './dto/update-caretaker-profile.dto';
@@ -13,11 +14,12 @@ export class UsersController {
     constructor(private readonly usersService: UsersService) {}
 
     @Get(':id')
+    @UseGuards(OptionalJwtAuthGuard)
     @ApiOperation({ summary: 'Отримати публічний профіль користувача' })
     @ApiResponse({ status: 200, description: 'Профіль знайдено' })
     @ApiResponse({ status: 404, description: 'Користувача не знайдено' })
-    getPublicProfile(@Param('id') id: string) {
-        return this.usersService.getPublicProfile(id);
+    getPublicProfile(@Param('id') id: string, @Request() req: { user?: User }) {
+        return this.usersService.getPublicProfile(id, req.user?.id);
     }
 
     @Patch('me')

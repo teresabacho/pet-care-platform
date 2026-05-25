@@ -15,6 +15,8 @@ import { CreateServiceAddonDto } from '../addons/dto/create-service-addon.dto';
 import { CreateWalkingPolicyDto } from '../policies/dto/create-walking-policy.dto';
 import { CreatePetSittingPolicyDto } from '../policies/dto/create-pet-sitting-policy.dto';
 import { CreateBoardingPolicyDto } from '../policies/dto/create-boarding-policy.dto';
+import { CreateGroomingPolicyDto } from '../policies/dto/create-grooming-policy.dto';
+import { CreateVetVisitPolicyDto } from '../policies/dto/create-vet-visit-policy.dto';
 import { CreateServiceInclusionDto } from '../inclusions/dto/create-service-inclusion.dto';
 
 // Об'єднаний DTO: створюється весь offering із залежностями за один POST.
@@ -75,4 +77,32 @@ export class CreateServiceOfferingDto {
     @ValidateNested()
     @Type(() => CreateBoardingPolicyDto)
     boardingPolicy?: CreateBoardingPolicyDto;
+
+    @ApiPropertyOptional({ type: () => CreateGroomingPolicyDto })
+    @IsOptional()
+    @ValidateNested()
+    @Type(() => CreateGroomingPolicyDto)
+    groomingPolicy?: CreateGroomingPolicyDto;
+
+    @ApiPropertyOptional({ type: () => CreateVetVisitPolicyDto })
+    @IsOptional()
+    @ValidateNested()
+    @Type(() => CreateVetVisitPolicyDto)
+    vetVisitPolicy?: CreateVetVisitPolicyDto;
+
+    // ── Per-service experience (заповнюється caretaker-ом окремо для кожної послуги) ──
+
+    @ApiPropertyOptional({ description: 'Опис досвіду саме у цій послузі' })
+    @IsOptional()
+    @IsString()
+    experienceDescription?: string;
+
+    @ApiPropertyOptional({
+        description: 'Теги навичок під цей тип послуги (free-form, до ~15)',
+        type: [String],
+    })
+    @IsOptional()
+    @IsArray()
+    @IsString({ each: true })
+    experienceSkills?: string[];
 }

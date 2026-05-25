@@ -16,6 +16,10 @@ import CaretakerOnboardingPage from './pages/CaretakerOnboardingPage'
 import CaretakerProfileDashboard from './pages/CaretakerProfileDashboard'
 import CaretakerProfileEditPage from './pages/CaretakerProfileEditPage'
 import ComingSoonPage from './pages/ComingSoonPage'
+import MessagesPage from './pages/MessagesPage'
+import BookingCreatePage from './pages/BookingCreatePage'
+import BookingTrackingPage from './pages/BookingTrackingPage'
+import StubCheckoutPage from './pages/StubCheckoutPage'
 
 export default function App() {
   return (
@@ -35,7 +39,10 @@ export default function App() {
           <Route path="/search" element={<SearchPage />} />
           <Route path="/caretaker/:id" element={<CaretakerPage />} />
           <Route path="/favorites" element={<ComingSoonPage title="Уподобані виконавці" />} />
-          <Route path="/messages" element={<ComingSoonPage title="Повідомлення" />} />
+          <Route element={<ProtectedRoute />}>
+            <Route path="/messages" element={<MessagesPage />} />
+            <Route path="/messages/:conversationId" element={<MessagesPage />} />
+          </Route>
           <Route element={<ProtectedRoute />}>
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/profile/edit" element={<ProfileEditPage />} />
@@ -44,6 +51,9 @@ export default function App() {
             <Route path="/pets/:id" element={<PetDetailPage />} />
             <Route path="/pets/:id/edit" element={<AddPetPage />} />
             <Route path="/bookings" element={<BookingsPage />} />
+            <Route path="/bookings/new" element={<BookingCreatePage />} />
+            <Route path="/bookings/:id/tracking" element={<BookingTrackingPage />} />
+            <Route path="/payments/stub-checkout" element={<StubCheckoutPage />} />
             <Route
               path="/settings/caretaker-profile"
               element={<CaretakerProfileDashboard />}

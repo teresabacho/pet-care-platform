@@ -1,20 +1,24 @@
 import {
-    Controller, Get, Param, Patch, Post, Query, UseGuards,
+    Controller, Get, Logger, Param, Patch, Post, Query, UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { TrackingService } from './tracking.service';
 import { TrackingGateway } from './tracking.gateway';
+import { GpsEmulatorService } from './emulator/gps-emulator.service';
 
 @ApiTags('tracking')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
 @Controller('tracking')
 export class TrackingController {
+    private readonly logger = new Logger(TrackingController.name);
+
     constructor(
         private readonly trackingService: TrackingService,
         private readonly trackingGateway: TrackingGateway,
+        private readonly gpsEmulator: GpsEmulatorService,
     ) {}
 
     @Post('sessions/:sessionId/walk-segments')
@@ -27,7 +31,17 @@ export class TrackingController {
         @CurrentUser('id') caretakerId: string,
     ) {
         const segment = await this.trackingService.startWalkSegment(sessionId, caretakerId);
-        this.trackingGateway.emitWalkStarted(segment.sessionId, segment.id);
+        // Не блокуємо створення сегменту якщо emit/emulator зі своєї сторони не подужали.
+        try {
+            this.trackingGateway.emitWalkStarted(segment.sessionId, segment.id);
+        } catch (err) {
+            this.logger.warn(`emitWalkStarted failed: ${(err as Error).message}`);
+        }
+        try {
+            this.gpsEmulator.start(segment.sessionId, segment.id);
+        } catch (err) {
+            this.logger.warn(`gpsEmulator.start failed: ${(err as Error).message}`);
+        }
         return segment;
     }
 
@@ -40,7 +54,16 @@ export class TrackingController {
         @CurrentUser('id') caretakerId: string,
     ) {
         const segment = await this.trackingService.completeWalkSegment(segmentId, caretakerId);
-        this.trackingGateway.emitWalkEnded(segment.sessionId, segment.id);
+        try {
+            this.trackingGateway.emitWalkEnded(segment.sessionId, segment.id);
+        } catch (err) {
+            this.logger.warn(`emitWalkEnded failed: ${(err as Error).message}`);
+        }
+        try {
+            this.gpsEmulator.stop(segment.sessionId);
+        } catch (err) {
+            this.logger.warn(`gpsEmulator.stop failed: ${(err as Error).message}`);
+        }
         return segment;
     }
 

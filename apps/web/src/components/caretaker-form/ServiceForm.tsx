@@ -1,16 +1,19 @@
-import { Plus, Trash2, Check } from 'lucide-react'
+import { Plus, Trash2, Check, X } from 'lucide-react'
 import {
   ADDON_TEMPLATES,
   AddonPriceUnit,
   AdditionalServiceCapability,
+  BirdType,
   CatSize,
   DayType,
   DEFAULT_PRICE_UNIT,
   DogSize,
   HomeCondition,
   INCLUSION_TEMPLATES,
+  OtherPetType,
   PetAgeGroup,
   PriceUnit,
+  RodentType,
   ServiceType,
   TIER_DURATION_TEMPLATES,
 } from '@pet-care/shared'
@@ -27,12 +30,15 @@ import {
 } from '@/components/ui/select'
 import {
   ADDON_PRICE_UNIT_LABELS,
+  BIRD_TYPE_LABELS,
   CAPABILITY_LABELS,
   CAT_SIZE_LABELS,
   DOG_SIZE_LABELS,
   HOME_CONDITION_LABELS,
+  OTHER_PET_TYPE_LABELS,
   PET_AGE_GROUP_LABELS,
   PRICE_UNIT_LABELS,
+  RODENT_TYPE_LABELS,
   SERVICE_TYPE_LABELS,
 } from '../../lib/caretaker-labels'
 import type {
@@ -74,6 +80,9 @@ export interface PolicyState {
   capabilities: AdditionalServiceCapability[]
   maxDogsAtOnce: number
   homeConditions: HomeCondition[]
+  acceptedRodentTypes: RodentType[]
+  acceptedBirdTypes: BirdType[]
+  acceptedOtherPetTypes: OtherPetType[]
 }
 
 export interface ServiceFormValue {
@@ -84,6 +93,8 @@ export interface ServiceFormValue {
   addons: AddonInput[]
   inclusions: string[]
   policy: PolicyState
+  experienceDescription: string
+  experienceSkills: string[]
 }
 
 interface ServiceFormProps {
@@ -95,14 +106,27 @@ interface ServiceFormProps {
   availableTypes?: ServiceType[]
 }
 
+// Усі типи послуг тепер мають policy (для PET_SITTING/BOARDING/GROOMING/VET_VISIT —
+// з підтримкою прийому додаткових видів тваринок).
 const POLICY_TYPES: ServiceType[] = [
   ServiceType.WALKING,
   ServiceType.PET_SITTING,
   ServiceType.BOARDING,
+  ServiceType.GROOMING,
+  ServiceType.VET_VISIT,
+]
+
+// Типи послуг, для яких є сенс приймати гризунів/птахів/інших — все, крім вигулу.
+const MULTI_SPECIES_TYPES: ServiceType[] = [
+  ServiceType.PET_SITTING,
+  ServiceType.BOARDING,
+  ServiceType.GROOMING,
+  ServiceType.VET_VISIT,
 ]
 
 const TABS = [
   { id: 'general', label: 'Загальне' },
+  { id: 'experience', label: 'Досвід' },
   { id: 'tiers', label: 'Тарифи' },
   { id: 'policy', label: 'Правила' },
   { id: 'inclusions', label: 'Що входить' },
@@ -122,6 +146,9 @@ export const EMPTY_POLICY: PolicyState = {
   capabilities: [],
   maxDogsAtOnce: 1,
   homeConditions: [],
+  acceptedRodentTypes: [],
+  acceptedBirdTypes: [],
+  acceptedOtherPetTypes: [],
 }
 
 export function emptyServiceFormValue(
@@ -142,6 +169,8 @@ export function emptyServiceFormValue(
     addons: [],
     inclusions: [],
     policy: EMPTY_POLICY,
+    experienceDescription: '',
+    experienceSkills: [],
   }
 }
 
@@ -151,35 +180,66 @@ export function serviceFormValueFromOffering(
   const policy: PolicyState = (() => {
     if (s.walkingPolicy) {
       return {
+        ...EMPTY_POLICY,
         acceptedDogSizes: s.walkingPolicy.acceptedDogSizes,
         acceptedCatSizes: s.walkingPolicy.acceptedCatSizes,
         acceptedAgeGroups: s.walkingPolicy.acceptedAgeGroups,
         acceptsSpecialNeedsPets: s.walkingPolicy.acceptsSpecialNeedsPets,
         capabilities: s.walkingPolicy.capabilities,
         maxDogsAtOnce: s.walkingPolicy.maxDogsAtOnce,
-        homeConditions: [],
       }
     }
     if (s.petSittingPolicy) {
       return {
+        ...EMPTY_POLICY,
         acceptedDogSizes: s.petSittingPolicy.acceptedDogSizes,
         acceptedCatSizes: s.petSittingPolicy.acceptedCatSizes,
         acceptedAgeGroups: s.petSittingPolicy.acceptedAgeGroups,
         acceptsSpecialNeedsPets: s.petSittingPolicy.acceptsSpecialNeedsPets,
         capabilities: s.petSittingPolicy.capabilities,
-        maxDogsAtOnce: 1,
-        homeConditions: [],
+        acceptedRodentTypes: s.petSittingPolicy.acceptedRodentTypes,
+        acceptedBirdTypes: s.petSittingPolicy.acceptedBirdTypes,
+        acceptedOtherPetTypes: s.petSittingPolicy.acceptedOtherPetTypes,
       }
     }
     if (s.boardingPolicy) {
       return {
+        ...EMPTY_POLICY,
         acceptedDogSizes: s.boardingPolicy.acceptedDogSizes,
         acceptedCatSizes: s.boardingPolicy.acceptedCatSizes,
         acceptedAgeGroups: s.boardingPolicy.acceptedAgeGroups,
         acceptsSpecialNeedsPets: s.boardingPolicy.acceptsSpecialNeedsPets,
         capabilities: s.boardingPolicy.capabilities,
-        maxDogsAtOnce: 1,
         homeConditions: s.boardingPolicy.homeConditions,
+        acceptedRodentTypes: s.boardingPolicy.acceptedRodentTypes,
+        acceptedBirdTypes: s.boardingPolicy.acceptedBirdTypes,
+        acceptedOtherPetTypes: s.boardingPolicy.acceptedOtherPetTypes,
+      }
+    }
+    if (s.groomingPolicy) {
+      return {
+        ...EMPTY_POLICY,
+        acceptedDogSizes: s.groomingPolicy.acceptedDogSizes,
+        acceptedCatSizes: s.groomingPolicy.acceptedCatSizes,
+        acceptedAgeGroups: s.groomingPolicy.acceptedAgeGroups,
+        acceptsSpecialNeedsPets: s.groomingPolicy.acceptsSpecialNeedsPets,
+        capabilities: s.groomingPolicy.capabilities,
+        acceptedRodentTypes: s.groomingPolicy.acceptedRodentTypes,
+        acceptedBirdTypes: s.groomingPolicy.acceptedBirdTypes,
+        acceptedOtherPetTypes: s.groomingPolicy.acceptedOtherPetTypes,
+      }
+    }
+    if (s.vetVisitPolicy) {
+      return {
+        ...EMPTY_POLICY,
+        acceptedDogSizes: s.vetVisitPolicy.acceptedDogSizes,
+        acceptedCatSizes: s.vetVisitPolicy.acceptedCatSizes,
+        acceptedAgeGroups: s.vetVisitPolicy.acceptedAgeGroups,
+        acceptsSpecialNeedsPets: s.vetVisitPolicy.acceptsSpecialNeedsPets,
+        capabilities: s.vetVisitPolicy.capabilities,
+        acceptedRodentTypes: s.vetVisitPolicy.acceptedRodentTypes,
+        acceptedBirdTypes: s.vetVisitPolicy.acceptedBirdTypes,
+        acceptedOtherPetTypes: s.vetVisitPolicy.acceptedOtherPetTypes,
       }
     }
     return EMPTY_POLICY
@@ -208,6 +268,8 @@ export function serviceFormValueFromOffering(
     })),
     inclusions: (s.inclusions ?? []).map((i) => i.text),
     policy,
+    experienceDescription: s.experienceDescription ?? '',
+    experienceSkills: s.experienceSkills ?? [],
   }
 }
 
@@ -230,6 +292,9 @@ export function buildCreateDto(
   const dto: CreateServiceOfferingDto = {
     serviceType: value.serviceType,
     description: value.description.trim() || undefined,
+    experienceDescription: value.experienceDescription.trim() || undefined,
+    experienceSkills:
+      value.experienceSkills.length > 0 ? value.experienceSkills : undefined,
     tiers: validTiers.map((t) => ({
       durationMinutes: t.durationMinutes ?? undefined,
       basePrice: t.basePrice as number,
@@ -270,6 +335,8 @@ export function buildUpdateDto(
   )
   const dto: UpdateServiceOfferingDto = {
     description: value.description.trim() || null,
+    experienceDescription: value.experienceDescription.trim() || null,
+    experienceSkills: value.experienceSkills,
     tiers: validTiers.map((t) => ({
       id: t.id,
       durationMinutes: t.durationMinutes ?? null,
@@ -314,6 +381,11 @@ function attachPolicy(
     value.policy.acceptedCatSizes.length > 0
       ? value.policy.acceptedCatSizes
       : Object.values(CatSize)
+  const multiSpecies = {
+    acceptedRodentTypes: value.policy.acceptedRodentTypes,
+    acceptedBirdTypes: value.policy.acceptedBirdTypes,
+    acceptedOtherPetTypes: value.policy.acceptedOtherPetTypes,
+  }
 
   if (value.serviceType === ServiceType.WALKING) {
     dto.walkingPolicy = {
@@ -322,12 +394,29 @@ function attachPolicy(
       maxDogsAtOnce: value.policy.maxDogsAtOnce,
     }
   } else if (value.serviceType === ServiceType.PET_SITTING) {
-    dto.petSittingPolicy = { ...baseFields, acceptedCatSizes: catSizes }
+    dto.petSittingPolicy = {
+      ...baseFields,
+      acceptedCatSizes: catSizes,
+      ...multiSpecies,
+    }
   } else if (value.serviceType === ServiceType.BOARDING) {
     dto.boardingPolicy = {
       ...baseFields,
       acceptedCatSizes: catSizes,
       homeConditions: value.policy.homeConditions,
+      ...multiSpecies,
+    }
+  } else if (value.serviceType === ServiceType.GROOMING) {
+    dto.groomingPolicy = {
+      ...baseFields,
+      acceptedCatSizes: catSizes,
+      ...multiSpecies,
+    }
+  } else if (value.serviceType === ServiceType.VET_VISIT) {
+    dto.vetVisitPolicy = {
+      ...baseFields,
+      acceptedCatSizes: catSizes,
+      ...multiSpecies,
     }
   }
 }
@@ -400,6 +489,15 @@ export function ServiceForm({
             description={value.description}
             onTypeChange={handleTypeChange}
             onDescriptionChange={(v) => patch('description', v)}
+          />
+        )}
+        {activeTab === 'experience' && (
+          <ExperiencePane
+            serviceType={value.serviceType}
+            description={value.experienceDescription}
+            skills={value.experienceSkills}
+            setDescription={(v) => patch('experienceDescription', v)}
+            setSkills={(v) => patch('experienceSkills', v)}
           />
         )}
         {activeTab === 'tiers' && (
@@ -1126,6 +1224,135 @@ function PolicyPane({ serviceType, policy, setPolicy }: PolicyPaneProps) {
           onChange={(v) => patch('homeConditions', v as HomeCondition[])}
         />
       )}
+
+      {MULTI_SPECIES_TYPES.includes(serviceType) && (
+        <>
+          <ChipsField
+            label="Гризуни та кролі"
+            description="Які гризуни приймаються — не вибрано означає не приймаєте."
+            options={Object.values(RodentType).map((v) => ({
+              value: v,
+              label: RODENT_TYPE_LABELS[v],
+            }))}
+            value={policy.acceptedRodentTypes}
+            onChange={(v) => patch('acceptedRodentTypes', v as RodentType[])}
+          />
+          <ChipsField
+            label="Птахи"
+            options={Object.values(BirdType).map((v) => ({
+              value: v,
+              label: BIRD_TYPE_LABELS[v],
+            }))}
+            value={policy.acceptedBirdTypes}
+            onChange={(v) => patch('acceptedBirdTypes', v as BirdType[])}
+          />
+          <ChipsField
+            label="Інші тваринки"
+            options={Object.values(OtherPetType).map((v) => ({
+              value: v,
+              label: OTHER_PET_TYPE_LABELS[v],
+            }))}
+            value={policy.acceptedOtherPetTypes}
+            onChange={(v) => patch('acceptedOtherPetTypes', v as OtherPetType[])}
+          />
+        </>
+      )}
+    </div>
+  )
+}
+
+// ── ExperiencePane ─────────────────────────────────────────────────────────
+
+interface ExperiencePaneProps {
+  serviceType: ServiceType
+  description: string
+  skills: string[]
+  setDescription: (v: string) => void
+  setSkills: (v: string[]) => void
+}
+
+function ExperiencePane({
+  serviceType,
+  description,
+  skills,
+  setDescription,
+  setSkills,
+}: ExperiencePaneProps) {
+  const [draft, setDraft] = useState('')
+
+  function addSkill() {
+    const trimmed = draft.trim()
+    if (!trimmed || skills.includes(trimmed)) return
+    setSkills([...skills, trimmed])
+    setDraft('')
+  }
+  function removeSkill(s: string) {
+    setSkills(skills.filter((x) => x !== s))
+  }
+
+  return (
+    <div className="space-y-4">
+      <p className="text-xs text-zinc-500">
+        Розкажіть про досвід саме у цій послузі — клієнти бачать це у блоці
+        «Досвід та навички — {SERVICE_TYPE_LABELS[serviceType]}» на вашій
+        сторінці.
+      </p>
+
+      <div className="space-y-1.5">
+        <Label htmlFor="sf-exp-desc">Опис досвіду у цій послузі</Label>
+        <Textarea
+          id="sf-exp-desc"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          placeholder="Наприклад: 5 років вигулюю собак різних розмірів, працюю з тривожними тваринками…"
+          rows={5}
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label>Теги навичок під цей тип послуги</Label>
+        <p className="text-xs text-zinc-500">
+          Короткі фрази, що ви вмієте робити в цій послузі. Натисніть Enter, щоб
+          додати.
+        </p>
+        <div className="flex gap-2">
+          <Input
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            placeholder="Наприклад: не боюся великих собак"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                addSkill()
+              }
+            }}
+          />
+          <Button type="button" variant="outline" onClick={addSkill}>
+            Додати
+          </Button>
+        </div>
+
+        {skills.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {skills.map((s) => (
+              <span
+                key={s}
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-zinc-900 text-white text-xs"
+              >
+                {s}
+                <button
+                  type="button"
+                  onClick={() => removeSkill(s)}
+                  className="hover:opacity-80"
+                  aria-label={`Прибрати ${s}`}
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   )
 }

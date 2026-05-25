@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ChevronDown } from 'lucide-react'
+import { ChevronDown, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
   DropdownMenu,
@@ -33,6 +33,12 @@ export function TileSelectDropdown({
   const [open, setOpen] = useState(false)
   const selected = options.find(o => o.value === value)
 
+  function handleClear(e: React.MouseEvent | React.KeyboardEvent) {
+    e.stopPropagation()
+    e.preventDefault()
+    onChange('')
+  }
+
   return (
     <div className={cn('flex flex-col gap-2', className)}>
       <span className="text-sm font-medium text-zinc-900 leading-none">{label}</span>
@@ -41,10 +47,23 @@ export function TileSelectDropdown({
         <DropdownMenuTrigger
           className="bg-white border border-zinc-200 rounded-md h-10 px-3 flex items-center justify-between w-full text-sm cursor-pointer"
         >
-          <span className={selected ? 'text-zinc-900' : 'text-zinc-400'}>
+          <span className={cn('truncate', selected ? 'text-zinc-900' : 'text-zinc-400')}>
             {selected ? `${selected.emoji} ${selected.label}` : placeholder}
           </span>
-          <ChevronDown className={cn('w-4 h-4 text-zinc-400 transition-transform', open && 'rotate-180')} />
+          <span className="flex items-center gap-1 flex-shrink-0 ml-1">
+            {selected && (
+              <span
+                role="button"
+                tabIndex={0}
+                onClick={handleClear}
+                onKeyDown={(e) => e.key === 'Enter' && handleClear(e)}
+                className="text-zinc-400 hover:text-zinc-700 p-0.5 rounded transition-colors"
+              >
+                <X className="w-3.5 h-3.5" />
+              </span>
+            )}
+            <ChevronDown className={cn('w-4 h-4 text-zinc-400 transition-transform', open && 'rotate-180')} />
+          </span>
         </DropdownMenuTrigger>
 
         <DropdownMenuContent

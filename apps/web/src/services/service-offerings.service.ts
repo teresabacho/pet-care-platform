@@ -11,6 +11,8 @@ import type {
   WalkingPolicy,
   PetSittingPolicy,
   BoardingPolicy,
+  GroomingPolicy,
+  VetVisitPolicy,
 } from '../types'
 
 export interface CreateServiceTierInput {
@@ -41,10 +43,14 @@ export interface CreateServiceInclusionInput {
 export type WalkingPolicyInput = Omit<WalkingPolicy, 'id' | 'serviceOfferingId'>
 export type PetSittingPolicyInput = Omit<PetSittingPolicy, 'id' | 'serviceOfferingId'>
 export type BoardingPolicyInput = Omit<BoardingPolicy, 'id' | 'serviceOfferingId'>
+export type GroomingPolicyInput = Omit<GroomingPolicy, 'id' | 'serviceOfferingId'>
+export type VetVisitPolicyInput = Omit<VetVisitPolicy, 'id' | 'serviceOfferingId'>
 
 export interface CreateServiceOfferingDto {
   serviceType: ServiceType
   description?: string
+  experienceDescription?: string
+  experienceSkills?: string[]
   tiers: CreateServiceTierInput[]
   sizeSurcharges?: CreateSizeSurchargeInput[]
   addons?: CreateServiceAddonInput[]
@@ -52,6 +58,8 @@ export interface CreateServiceOfferingDto {
   walkingPolicy?: WalkingPolicyInput
   petSittingPolicy?: PetSittingPolicyInput
   boardingPolicy?: BoardingPolicyInput
+  groomingPolicy?: GroomingPolicyInput
+  vetVisitPolicy?: VetVisitPolicyInput
 }
 
 // На update tier може мати id (existing tier) або не мати (новий tier).
@@ -67,6 +75,8 @@ export interface UpdateServiceTierInput {
 
 export interface UpdateServiceOfferingDto {
   description?: string | null
+  experienceDescription?: string | null
+  experienceSkills?: string[]
   tiers?: UpdateServiceTierInput[]
   sizeSurcharges?: CreateSizeSurchargeInput[]
   addons?: CreateServiceAddonInput[]
@@ -74,6 +84,8 @@ export interface UpdateServiceOfferingDto {
   walkingPolicy?: WalkingPolicyInput
   petSittingPolicy?: PetSittingPolicyInput
   boardingPolicy?: BoardingPolicyInput
+  groomingPolicy?: GroomingPolicyInput
+  vetVisitPolicy?: VetVisitPolicyInput
 }
 
 interface SearchServicesParams {

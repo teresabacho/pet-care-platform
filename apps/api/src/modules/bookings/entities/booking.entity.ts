@@ -1,7 +1,8 @@
 import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
-import { BookingStatus, ServiceType } from '@pet-care/shared';
+import { BookingStatus, PaymentStatus, ServiceType } from '@pet-care/shared';
 import { User } from '../../auth/entities/user.entity';
 import { Pet } from '../../pets/entities/pet.entity';
+import { ServiceTier } from '../../services/tiers/entities/service-tier.entity';
 
 @Entity('bookings')
 export class Booking {
@@ -50,6 +51,20 @@ export class Booking {
     @Column({ type: 'decimal', precision: 10, scale: 2 })
     price: number;
 
+    // FK на ServiceTier з RESTRICT — caretaker не може видалити tier поки існують
+    // букінги, які на нього посилаються. Знімок ціни вже зафіксовано в `price`.
+    @ManyToOne(() => ServiceTier, { onDelete: 'RESTRICT' })
+    @JoinColumn({ name: 'tier_id' })
+    tier: ServiceTier;
+
+    @Column({ type: 'uuid', name: 'tier_id' })
+    tierId: string;
+
+    // Snapshot обраних addon-ів (UUID-и) — без FK, бо addons можуть бути видалені
+    // з offering без впливу на існуючі букінги. Для відображення в історії.
+    @Column({ type: 'text', array: true, default: '{}', name: 'addon_ids' })
+    addonIds: string[];
+
     @Column({ type: 'text', nullable: true })
     notes: string | null;
 
@@ -64,6 +79,33 @@ export class Booking {
 
     @Column({ name: 'return_confirmed_by_caretaker', default: false })
     returnConfirmedByCaretaker: boolean;
+
+    // ── Скасування ─────────────────────────────────────────────────────────
+    @Column({ type: 'text', nullable: true, name: 'cancellation_reason' })
+    cancellationReason: string | null;
+
+    // Хто скасував — щоб у власника відображалось «доглядальник скасував» / «ви скасували».
+    @Column({ type: 'uuid', nullable: true, name: 'cancelled_by_user_id' })
+    cancelledByUserId: string | null;
+
+    @Column({ type: 'timestamp', nullable: true, name: 'cancelled_at' })
+    cancelledAt: Date | null;
+
+    // ── Платежі (LiqPay test-mode) ─────────────────────────────────────────
+    @Column({
+        type: 'enum',
+        enum: PaymentStatus,
+        default: PaymentStatus.AWAITING_PAYMENT,
+        name: 'payment_status',
+    })
+    paymentStatus: PaymentStatus;
+
+    // LiqPay payment_id (number у відповіді — зберігаємо як string для гнучкості).
+    @Column({ type: 'varchar', nullable: true, name: 'payment_external_id' })
+    paymentExternalId: string | null;
+
+    @Column({ type: 'timestamp', nullable: true, name: 'paid_at' })
+    paidAt: Date | null;
 
     @CreateDateColumn({ name: 'created_at' })
     createdAt: Date;

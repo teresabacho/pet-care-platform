@@ -46,6 +46,11 @@ function buildPolicy(
     acceptsSpecialNeedsPets: data.acceptsSpecialNeedsPets,
     capabilities: [] as AdditionalServiceCapability[],
   }
+  const multiSpecies = {
+    acceptedRodentTypes: data.acceptedRodentTypes,
+    acceptedBirdTypes: data.acceptedBirdTypes,
+    acceptedOtherPetTypes: data.acceptedOtherPetTypes,
+  }
   if (serviceType === ServiceType.WALKING) {
     return {
       walkingPolicy: {
@@ -57,7 +62,13 @@ function buildPolicy(
     }
   }
   if (serviceType === ServiceType.PET_SITTING) {
-    return { petSittingPolicy: { ...baseFields, acceptedCatSizes: catSizes } }
+    return {
+      petSittingPolicy: {
+        ...baseFields,
+        acceptedCatSizes: catSizes,
+        ...multiSpecies,
+      },
+    }
   }
   if (serviceType === ServiceType.BOARDING) {
     return {
@@ -65,6 +76,25 @@ function buildPolicy(
         ...baseFields,
         acceptedCatSizes: catSizes,
         homeConditions: data.homeConditions as HomeCondition[],
+        ...multiSpecies,
+      },
+    }
+  }
+  if (serviceType === ServiceType.GROOMING) {
+    return {
+      groomingPolicy: {
+        ...baseFields,
+        acceptedCatSizes: catSizes,
+        ...multiSpecies,
+      },
+    }
+  }
+  if (serviceType === ServiceType.VET_VISIT) {
+    return {
+      vetVisitPolicy: {
+        ...baseFields,
+        acceptedCatSizes: catSizes,
+        ...multiSpecies,
       },
     }
   }
@@ -76,6 +106,9 @@ function buildOfferingDto(serviceType: ServiceType, data: ServiceFormData): Crea
   return {
     serviceType,
     description: data.description.trim() || undefined,
+    experienceDescription: data.experienceDescription.trim() || undefined,
+    experienceSkills:
+      data.experienceSkills.length > 0 ? data.experienceSkills : undefined,
     tiers: validTiers.map((t) => ({
       durationMinutes: t.durationMinutes,
       basePrice: t.basePrice as number,

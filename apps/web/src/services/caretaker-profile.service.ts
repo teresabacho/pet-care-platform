@@ -13,8 +13,6 @@ interface CreateCaretakerProfileDto {
   serviceTypes?: ServiceType[]
   skills?: CaretakerSkill[]
   languages?: Language[]
-  /** ISO 8601, наприклад '2026-06-01' */
-  availabilityFilledUntil?: string
   addressIsPublic?: boolean
   serviceLatitude?: number
   serviceLongitude?: number

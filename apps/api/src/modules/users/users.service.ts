@@ -52,10 +52,7 @@ export class UsersService {
         if (existing) {
             throw new ConflictException('Профіль виконавця вже існує');
         }
-        return this.usersRepository.createCaretakerProfile(
-            userId,
-            this.withAvailabilityTimestamp(dto),
-        );
+        return this.usersRepository.createCaretakerProfile(userId, dto);
     }
 
     async updateCaretakerProfile(userId: string, dto: UpdateCaretakerProfileDto) {
@@ -63,20 +60,6 @@ export class UsersService {
         if (!existing) {
             throw new NotFoundException('Профіль виконавця не знайдено');
         }
-        return this.usersRepository.updateCaretakerProfile(
-            userId,
-            this.withAvailabilityTimestamp(dto),
-        );
-    }
-
-    // Якщо клієнт оновлює "доступний до", сервер автоматично проставляє
-    // момент оновлення — щоб UI показував "останнє оновлення DD.MM.YYYY".
-    private withAvailabilityTimestamp<T extends { availabilityFilledUntil?: string }>(
-        dto: T,
-    ): T & { availabilityUpdatedAt?: Date } {
-        if (dto.availabilityFilledUntil !== undefined) {
-            return { ...dto, availabilityUpdatedAt: new Date() };
-        }
-        return dto;
+        return this.usersRepository.updateCaretakerProfile(userId, dto);
     }
 }

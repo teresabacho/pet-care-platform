@@ -41,19 +41,19 @@ export class UsersRepository {
         return this.caretakerProfileRepo.findOne({ where: { userId } });
     }
 
-    createCaretakerProfile(
-        userId: string,
-        dto: CreateCaretakerProfileDto & { availabilityUpdatedAt?: Date },
-    ): Promise<CaretakerProfile> {
+    createCaretakerProfile(userId: string, dto: CreateCaretakerProfileDto): Promise<CaretakerProfile> {
         const profile = this.caretakerProfileRepo.create({ userId, ...dto });
         return this.caretakerProfileRepo.save(profile);
     }
 
-    async updateCaretakerProfile(
-        userId: string,
-        dto: UpdateCaretakerProfileDto & { availabilityUpdatedAt?: Date },
-    ): Promise<CaretakerProfile> {
+    async updateCaretakerProfile(userId: string, dto: UpdateCaretakerProfileDto): Promise<CaretakerProfile> {
         await this.caretakerProfileRepo.update({ userId }, dto);
         return this.caretakerProfileRepo.findOne({ where: { userId } }) as Promise<CaretakerProfile>;
+    }
+
+    async touchAvailabilityUpdatedAt(profileId: string): Promise<void> {
+        await this.caretakerProfileRepo.update({ id: profileId }, {
+            availabilityUpdatedAt: new Date(),
+        });
     }
 }

@@ -48,7 +48,6 @@ export enum DayType {
 export enum Language {
     UK = 'UK',
     EN = 'EN',
-    RU = 'RU',
     PL = 'PL',
     DE = 'DE',
     FR = 'FR',
@@ -58,12 +57,35 @@ export enum Language {
 export const LANGUAGE_LABELS: Record<Language, string> = {
     [Language.UK]: 'Українська',
     [Language.EN]: 'English',
-    [Language.RU]: 'Російська',
     [Language.PL]: 'Polski',
     [Language.DE]: 'Deutsch',
     [Language.FR]: 'Français',
     [Language.ES]: 'Español',
 };
+
+// Слоти доступності caretaker-а: ранкова робота, обідня, після обіду, вечірня.
+// Один день = чотири слоти, кожен зі статусом available/blocked.
+export enum AvailabilitySlot {
+    MORNING = 'MORNING', // 7–11
+    MIDDAY = 'MIDDAY', // 11–15
+    AFTERNOON = 'AFTERNOON', // 15–18
+    EVENING = 'EVENING', // 18–23
+}
+
+export const AVAILABILITY_SLOT_LABELS: Record<AvailabilitySlot, string> = {
+    [AvailabilitySlot.MORNING]: '7–11',
+    [AvailabilitySlot.MIDDAY]: '11–15',
+    [AvailabilitySlot.AFTERNOON]: '15–18',
+    [AvailabilitySlot.EVENING]: '18–23',
+};
+
+// Усі слоти у відображуваному порядку (для рендеру grid).
+export const AVAILABILITY_SLOTS_ORDER: AvailabilitySlot[] = [
+    AvailabilitySlot.MORNING,
+    AvailabilitySlot.MIDDAY,
+    AvailabilitySlot.AFTERNOON,
+    AvailabilitySlot.EVENING,
+];
 
 export enum TrackingSessionStatus {
     ACTIVE = 'ACTIVE',
@@ -74,6 +96,22 @@ export enum TrackingSessionStatus {
 export enum WalkSegmentStatus {
     ACTIVE = 'ACTIVE',
     COMPLETED = 'COMPLETED',
+}
+
+// Типи повідомлень у чаті. TEXT — звичайне текстове повідомлення.
+// MEDIA — повідомлення з вкладеннями (зображення/відео/документи), text є caption-ом (опціонально).
+export enum MessageType {
+    TEXT  = 'TEXT',
+    MEDIA = 'MEDIA',
+}
+
+// Стан оплати замовлення. Незалежна вісь від BookingStatus — замовлення
+// може бути CONFIRMED але ще AWAITING_PAYMENT, чи навпаки PAID але ще PENDING.
+export enum PaymentStatus {
+    AWAITING_PAYMENT = 'AWAITING_PAYMENT',
+    PAID             = 'PAID',
+    FAILED           = 'FAILED',
+    REFUNDED         = 'REFUNDED',
 }
 
 // Тип сутності, до якої прив'язаний MediaItem.
@@ -196,6 +234,36 @@ export enum PetAgeGroup {
     ADULT           = 'ADULT',
     SENIOR          = 'SENIOR',
     ELDERLY         = 'ELDERLY',
+}
+
+// Дрібні гризуни/кролики — підходять для PET_SITTING, BOARDING, GROOMING, VET_VISIT.
+export enum RodentType {
+    HAMSTER     = 'HAMSTER',
+    GUINEA_PIG  = 'GUINEA_PIG',
+    RAT         = 'RAT',
+    MOUSE       = 'MOUSE',
+    RABBIT      = 'RABBIT',
+    FERRET      = 'FERRET',
+    CHINCHILLA  = 'CHINCHILLA',
+}
+
+// Птахи. Підходять для PET_SITTING, VET_VISIT і частково BOARDING.
+export enum BirdType {
+    PARROT       = 'PARROT',
+    BUDGERIGAR   = 'BUDGERIGAR',
+    COCKATIEL    = 'COCKATIEL',
+    CANARY       = 'CANARY',
+    FINCH        = 'FINCH',
+    OTHER_BIRD   = 'OTHER_BIRD',
+}
+
+// Інші екзотичні тварини. Підходять переважно для PET_SITTING та VET_VISIT.
+export enum OtherPetType {
+    TURTLE  = 'TURTLE',
+    FISH    = 'FISH',
+    SNAKE   = 'SNAKE',
+    LIZARD  = 'LIZARD',
+    OTHER   = 'OTHER',
 }
 
 // Умови дому для BoardingPolicy. Структуровані як opt-in взаємовиключні пари —

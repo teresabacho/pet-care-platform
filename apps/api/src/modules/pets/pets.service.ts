@@ -1,4 +1,5 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PetsRepository } from './pets.repository';
 import { CreatePetDto } from './dto/create-pet.dto';
 import { UpdatePetDto } from './dto/update-pet.dto';
@@ -6,7 +7,10 @@ import { Pet } from './entities/pet.entity';
 
 @Injectable()
 export class PetsService {
-    constructor(private readonly petsRepository: PetsRepository) {}
+    constructor(
+        private readonly petsRepository: PetsRepository,
+        private readonly eventEmitter: EventEmitter2,
+    ) {}
 
     create(ownerId: string, dto: CreatePetDto): Promise<Pet> {
         return this.petsRepository.create(ownerId, dto);
@@ -29,7 +33,13 @@ export class PetsService {
 
     async delete(id: string, userId: string): Promise<void> {
         await this.checkOwnership(id, userId);
+        // Eвент дозволяє MediaService прибрати аватар/галерею без циклічного імпорту.
+        await this.eventEmitter.emitAsync('pet.deleted', { petId: id });
         return this.petsRepository.delete(id);
+    }
+
+    setPhotoUrl(petId: string, url: string | null): Promise<void> {
+        return this.petsRepository.setPhotoUrl(petId, url);
     }
 
     private async checkOwnership(petId: string, userId: string): Promise<Pet> {

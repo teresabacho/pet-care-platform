@@ -12,6 +12,9 @@ build/
 # Logs
 *.log
 
+# Local data (MinIO, etc.)
+data/
+
 # OS files
 .DS_Store
 

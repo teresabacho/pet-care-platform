@@ -40,6 +40,24 @@ export class User {
     @Column({ nullable: true, name: 'avatar_url' })
     avatarUrl: string;
 
+    @Column({ type: 'varchar', length: 2, nullable: true })
+    country: string | null;
+
+    @Column({ nullable: true })
+    city: string | null;
+
+    @Column({ nullable: true })
+    street: string | null;
+
+    @Column({ nullable: true })
+    apartment: string | null;
+
+    @Column({ nullable: true })
+    floor: string | null;
+
+    @Column({ nullable: true })
+    entrance: string | null;
+
     @CreateDateColumn({ name: 'created_at' })
     createdAt: Date;
 

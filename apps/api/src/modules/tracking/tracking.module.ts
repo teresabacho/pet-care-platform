@@ -8,11 +8,17 @@ import { TrackingSession } from './entities/tracking-session.entity';
 import { WalkSegment } from './entities/walk-segment.entity';
 import { TrackPoint } from './entities/track-point.entity';
 import { GeoModule } from '../geo/geo.module';
+import { GpsEmulatorService } from './emulator/gps-emulator.service';
 
 @Module({
     imports: [TypeOrmModule.forFeature([TrackingSession, WalkSegment, TrackPoint]), GeoModule],
     controllers: [TrackingController],
-    providers: [TrackingGateway, TrackingService, TrackingRepository],
-    exports: [TrackingService],
+    providers: [
+        TrackingGateway,
+        TrackingService,
+        TrackingRepository,
+        GpsEmulatorService,
+    ],
+    exports: [TrackingService, GpsEmulatorService],
 })
 export class TrackingModule {}

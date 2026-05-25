@@ -70,6 +70,10 @@ export class TrackingService {
             throw new BadRequestException('Прогулянка вже завершена');
         }
 
+        // Спочатку скидаємо буфер у Postgres — інакше ST_Length над порожньою
+        // таблицею поверне 0, бо точки ще не з'явились у track_points.
+        await this.flushPointBuffer();
+
         const distance = await this.trackingRepository.computeSegmentDistance(segmentId);
         await this.trackingRepository.completeSegment(segmentId, distance);
         return this.trackingRepository.findSegmentById(segmentId) as Promise<WalkSegment>;
@@ -82,8 +86,30 @@ export class TrackingService {
         return { session, segments };
     }
 
-    async getPoints(sessionId: string, segmentId?: string): Promise<TrackPoint[]> {
-        return this.trackingRepository.findPointsBySessionId(sessionId, segmentId);
+    // У базі координати зберігаються у колонках latitude/longitude, але фронт
+    // (як і WS-події tracking:live-point) використовує короткі lat/lng. Робимо
+    // мепінг тут, щоб обидва канали мали однаковий контракт.
+    async getPoints(sessionId: string, segmentId?: string): Promise<Array<{
+        id: string;
+        sessionId: string;
+        walkSegmentId: string | null;
+        lat: number;
+        lng: number;
+        altitude: number | null;
+        speed: number | null;
+        timestamp: Date;
+    }>> {
+        const points = await this.trackingRepository.findPointsBySessionId(sessionId, segmentId);
+        return points.map(p => ({
+            id: p.id,
+            sessionId: p.sessionId,
+            walkSegmentId: p.walkSegmentId,
+            lat: p.latitude,
+            lng: p.longitude,
+            altitude: p.altitude,
+            speed: p.speed,
+            timestamp: p.timestamp,
+        }));
     }
 
     // Called by WebSocket gateway: buffer point in Redis

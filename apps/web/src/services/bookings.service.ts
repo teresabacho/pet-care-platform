@@ -18,8 +18,19 @@ export const bookingsService = {
     return data
   },
 
-  async updateStatus(id: string, status: BookingStatus): Promise<Booking> {
-    const { data } = await apiClient.patch<Booking>(`/bookings/${id}/status`, { status })
+  async updateStatus(
+    id: string,
+    status: BookingStatus,
+    cancellationReason?: string,
+  ): Promise<Booking> {
+    const body: { status: BookingStatus; cancellationReason?: string } = {
+      status,
+    }
+    if (cancellationReason) body.cancellationReason = cancellationReason
+    const { data } = await apiClient.patch<Booking>(
+      `/bookings/${id}/status`,
+      body,
+    )
     return data
   },
 

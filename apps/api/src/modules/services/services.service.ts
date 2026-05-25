@@ -27,20 +27,32 @@ import { ServiceAddonsRepository } from './addons/service-addons.repository';
 import { WalkingPolicy } from './policies/entities/walking-policy.entity';
 import { PetSittingPolicy } from './policies/entities/pet-sitting-policy.entity';
 import { BoardingPolicy } from './policies/entities/boarding-policy.entity';
+import { GroomingPolicy } from './policies/entities/grooming-policy.entity';
+import { VetVisitPolicy } from './policies/entities/vet-visit-policy.entity';
 import {
     BoardingPoliciesRepository,
+    GroomingPoliciesRepository,
     PetSittingPoliciesRepository,
+    VetVisitPoliciesRepository,
     WalkingPoliciesRepository,
 } from './policies/policies.repositories';
 import { ServiceInclusion } from './inclusions/entities/service-inclusion.entity';
 import { ServiceInclusionsRepository } from './inclusions/service-inclusions.repository';
 
-// Які serviceType потребують Policy і яку саме.
-type PolicyKey = 'walkingPolicy' | 'petSittingPolicy' | 'boardingPolicy';
-const POLICY_FOR_TYPE: Partial<Record<ServiceType, PolicyKey>> = {
+// Які serviceType потребують Policy і яку саме. Тепер усі типи мають свою policy
+// (раніше GROOMING / VET_VISIT були без policy — додано для прийому тваринок).
+type PolicyKey =
+    | 'walkingPolicy'
+    | 'petSittingPolicy'
+    | 'boardingPolicy'
+    | 'groomingPolicy'
+    | 'vetVisitPolicy';
+const POLICY_FOR_TYPE: Record<ServiceType, PolicyKey> = {
     [ServiceType.WALKING]: 'walkingPolicy',
     [ServiceType.PET_SITTING]: 'petSittingPolicy',
     [ServiceType.BOARDING]: 'boardingPolicy',
+    [ServiceType.GROOMING]: 'groomingPolicy',
+    [ServiceType.VET_VISIT]: 'vetVisitPolicy',
 };
 
 @Injectable()
@@ -58,6 +70,8 @@ export class ServicesService {
         private readonly walkingPoliciesRepo: WalkingPoliciesRepository,
         private readonly petSittingPoliciesRepo: PetSittingPoliciesRepository,
         private readonly boardingPoliciesRepo: BoardingPoliciesRepository,
+        private readonly groomingPoliciesRepo: GroomingPoliciesRepository,
+        private readonly vetVisitPoliciesRepo: VetVisitPoliciesRepository,
         private readonly inclusionsRepo: ServiceInclusionsRepository,
     ) {}
 
@@ -88,6 +102,8 @@ export class ServicesService {
                 caretakerId: profile.id,
                 serviceType: dto.serviceType,
                 description: dto.description ?? null,
+                experienceDescription: dto.experienceDescription ?? null,
+                experienceSkills: dto.experienceSkills ?? [],
             });
             const saved = await manager.save(ServiceOffering, offering);
 
@@ -122,6 +138,10 @@ export class ServicesService {
                 );
             } else if (dto.serviceType === ServiceType.BOARDING && dto.boardingPolicy) {
                 await this.boardingPoliciesRepo.create(manager, saved.id, dto.boardingPolicy);
+            } else if (dto.serviceType === ServiceType.GROOMING && dto.groomingPolicy) {
+                await this.groomingPoliciesRepo.create(manager, saved.id, dto.groomingPolicy);
+            } else if (dto.serviceType === ServiceType.VET_VISIT && dto.vetVisitPolicy) {
+                await this.vetVisitPoliciesRepo.create(manager, saved.id, dto.vetVisitPolicy);
             }
 
             return saved.id;
@@ -193,12 +213,19 @@ export class ServicesService {
 
         try {
             await this.dataSource.transaction(async (manager) => {
+                const offeringPatch: Partial<ServiceOffering> = {};
                 if (dto.description !== undefined) {
-                    await manager.update(
-                        ServiceOffering,
-                        { id },
-                        { description: dto.description ?? null },
-                    );
+                    offeringPatch.description = dto.description ?? null;
+                }
+                if (dto.experienceDescription !== undefined) {
+                    offeringPatch.experienceDescription =
+                        dto.experienceDescription ?? null;
+                }
+                if (dto.experienceSkills !== undefined) {
+                    offeringPatch.experienceSkills = dto.experienceSkills ?? [];
+                }
+                if (Object.keys(offeringPatch).length > 0) {
+                    await manager.update(ServiceOffering, { id }, offeringPatch);
                 }
 
                 if (dto.tiers !== undefined) {
@@ -253,6 +280,18 @@ export class ServicesService {
                 ) {
                     await manager.delete(BoardingPolicy, { serviceOfferingId: id });
                     await this.boardingPoliciesRepo.create(manager, id, dto.boardingPolicy);
+                } else if (
+                    offering.serviceType === ServiceType.GROOMING &&
+                    dto.groomingPolicy
+                ) {
+                    await manager.delete(GroomingPolicy, { serviceOfferingId: id });
+                    await this.groomingPoliciesRepo.create(manager, id, dto.groomingPolicy);
+                } else if (
+                    offering.serviceType === ServiceType.VET_VISIT &&
+                    dto.vetVisitPolicy
+                ) {
+                    await manager.delete(VetVisitPolicy, { serviceOfferingId: id });
+                    await this.vetVisitPoliciesRepo.create(manager, id, dto.vetVisitPolicy);
                 }
             });
         } catch (err) {
@@ -307,20 +346,13 @@ export class ServicesService {
         if (dto.walkingPolicy) provided.push('walkingPolicy');
         if (dto.petSittingPolicy) provided.push('petSittingPolicy');
         if (dto.boardingPolicy) provided.push('boardingPolicy');
+        if (dto.groomingPolicy) provided.push('groomingPolicy');
+        if (dto.vetVisitPolicy) provided.push('vetVisitPolicy');
 
-        if (required) {
-            if (provided.length !== 1 || provided[0] !== required) {
-                throw new BadRequestException(
-                    `Для serviceType=${dto.serviceType} має бути передано саме ${required} (отримано: ${provided.join(', ') || 'нічого'})`,
-                );
-            }
-        } else {
-            // GROOMING / VET_VISIT — поки без policy
-            if (provided.length > 0) {
-                throw new BadRequestException(
-                    `Для serviceType=${dto.serviceType} policy не задається`,
-                );
-            }
+        if (provided.length !== 1 || provided[0] !== required) {
+            throw new BadRequestException(
+                `Для serviceType=${dto.serviceType} має бути передано саме ${required} (отримано: ${provided.join(', ') || 'нічого'})`,
+            );
         }
     }
 
@@ -335,6 +367,8 @@ export class ServicesService {
         if (dto.walkingPolicy) provided.push('walkingPolicy');
         if (dto.petSittingPolicy) provided.push('petSittingPolicy');
         if (dto.boardingPolicy) provided.push('boardingPolicy');
+        if (dto.groomingPolicy) provided.push('groomingPolicy');
+        if (dto.vetVisitPolicy) provided.push('vetVisitPolicy');
 
         if (provided.length === 0) return; // policy не міняємо — ок
 
@@ -343,14 +377,9 @@ export class ServicesService {
                 `Можна передати лише одну policy, отримано: ${provided.join(', ')}`,
             );
         }
-        if (required && provided[0] !== required) {
+        if (provided[0] !== required) {
             throw new BadRequestException(
                 `Для serviceType=${serviceType} має бути ${required}, а не ${provided[0]}`,
-            );
-        }
-        if (!required) {
-            throw new BadRequestException(
-                `Для serviceType=${serviceType} policy не задається`,
             );
         }
     }
@@ -418,6 +447,8 @@ export class ServicesService {
             walkingPolicy: WalkingPolicy | null;
             petSittingPolicy: PetSittingPolicy | null;
             boardingPolicy: BoardingPolicy | null;
+            groomingPolicy: GroomingPolicy | null;
+            vetVisitPolicy: VetVisitPolicy | null;
         }
     > {
         const [tiers, sizeSurcharges, addons, inclusions] = await Promise.all([
@@ -430,6 +461,8 @@ export class ServicesService {
         let walkingPolicy: WalkingPolicy | null = null;
         let petSittingPolicy: PetSittingPolicy | null = null;
         let boardingPolicy: BoardingPolicy | null = null;
+        let groomingPolicy: GroomingPolicy | null = null;
+        let vetVisitPolicy: VetVisitPolicy | null = null;
 
         if (offering.serviceType === ServiceType.WALKING) {
             walkingPolicy = await this.walkingPoliciesRepo.findByOfferingId(offering.id);
@@ -437,6 +470,10 @@ export class ServicesService {
             petSittingPolicy = await this.petSittingPoliciesRepo.findByOfferingId(offering.id);
         } else if (offering.serviceType === ServiceType.BOARDING) {
             boardingPolicy = await this.boardingPoliciesRepo.findByOfferingId(offering.id);
+        } else if (offering.serviceType === ServiceType.GROOMING) {
+            groomingPolicy = await this.groomingPoliciesRepo.findByOfferingId(offering.id);
+        } else if (offering.serviceType === ServiceType.VET_VISIT) {
+            vetVisitPolicy = await this.vetVisitPoliciesRepo.findByOfferingId(offering.id);
         }
 
         return Object.assign(offering, {
@@ -447,6 +484,8 @@ export class ServicesService {
             walkingPolicy,
             petSittingPolicy,
             boardingPolicy,
+            groomingPolicy,
+            vetVisitPolicy,
         });
     }
 }

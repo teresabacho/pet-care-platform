@@ -8,9 +8,12 @@ import {
 } from 'class-validator';
 import {
     AdditionalServiceCapability,
+    BirdType,
     CatSize,
     DogSize,
+    OtherPetType,
     PetAgeGroup,
+    RodentType,
 } from '@pet-care/shared';
 
 export class CreatePetSittingPolicyDto {
@@ -42,4 +45,25 @@ export class CreatePetSittingPolicyDto {
     @ArrayUnique()
     @IsEnum(AdditionalServiceCapability, { each: true })
     capabilities?: AdditionalServiceCapability[];
+
+    @ApiPropertyOptional({ enum: RodentType, isArray: true })
+    @IsOptional()
+    @IsArray()
+    @ArrayUnique()
+    @IsEnum(RodentType, { each: true })
+    acceptedRodentTypes?: RodentType[];
+
+    @ApiPropertyOptional({ enum: BirdType, isArray: true })
+    @IsOptional()
+    @IsArray()
+    @ArrayUnique()
+    @IsEnum(BirdType, { each: true })
+    acceptedBirdTypes?: BirdType[];
+
+    @ApiPropertyOptional({ enum: OtherPetType, isArray: true })
+    @IsOptional()
+    @IsArray()
+    @ArrayUnique()
+    @IsEnum(OtherPetType, { each: true })
+    acceptedOtherPetTypes?: OtherPetType[];
 }

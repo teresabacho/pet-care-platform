@@ -1,13 +1,16 @@
 import { create } from 'zustand'
 import type {
   AddonPriceUnit,
+  BirdType,
   CaretakerSkill,
   CatSize,
   DogSize,
   HomeCondition,
   Language,
+  OtherPetType,
   PetAgeGroup,
   PriceUnit,
+  RodentType,
   ServiceType,
 } from '@pet-care/shared'
 
@@ -54,6 +57,11 @@ export interface ServiceFormData {
   acceptsSpecialNeedsPets: boolean
   homeConditions: HomeCondition[]
   maxPetsAtOnce: number
+  acceptedRodentTypes: RodentType[]
+  acceptedBirdTypes: BirdType[]
+  acceptedOtherPetTypes: OtherPetType[]
+  experienceDescription: string
+  experienceSkills: string[]
 }
 
 export const EMPTY_SERVICE_FORM_DATA: ServiceFormData = {
@@ -69,6 +77,11 @@ export const EMPTY_SERVICE_FORM_DATA: ServiceFormData = {
   acceptsSpecialNeedsPets: false,
   homeConditions: [],
   maxPetsAtOnce: 1,
+  acceptedRodentTypes: [],
+  acceptedBirdTypes: [],
+  acceptedOtherPetTypes: [],
+  experienceDescription: '',
+  experienceSkills: [],
 }
 
 export interface OnboardingFormData {

@@ -30,6 +30,12 @@ export class PetsRepository {
         return this.repo.findOne({ where: { id } }) as Promise<Pet>;
     }
 
+    setPhotoUrl(id: string, photoUrl: string | null): Promise<void> {
+        return this.repo
+            .update(id, { photoUrl: photoUrl as string })
+            .then(() => undefined);
+    }
+
     delete(id: string): Promise<void> {
         return this.repo.delete(id).then(() => undefined);
     }

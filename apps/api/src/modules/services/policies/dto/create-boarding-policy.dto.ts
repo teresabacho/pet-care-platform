@@ -8,10 +8,13 @@ import {
 } from 'class-validator';
 import {
     AdditionalServiceCapability,
+    BirdType,
     CatSize,
     DogSize,
     HomeCondition,
+    OtherPetType,
     PetAgeGroup,
+    RodentType,
 } from '@pet-care/shared';
 import { NoConflictingHomeConditions } from '../../../../common/validators/no-conflicting-home-conditions.validator';
 
@@ -56,4 +59,25 @@ export class CreateBoardingPolicyDto {
     @IsEnum(HomeCondition, { each: true })
     @NoConflictingHomeConditions()
     homeConditions: HomeCondition[];
+
+    @ApiPropertyOptional({ enum: RodentType, isArray: true })
+    @IsOptional()
+    @IsArray()
+    @ArrayUnique()
+    @IsEnum(RodentType, { each: true })
+    acceptedRodentTypes?: RodentType[];
+
+    @ApiPropertyOptional({ enum: BirdType, isArray: true })
+    @IsOptional()
+    @IsArray()
+    @ArrayUnique()
+    @IsEnum(BirdType, { each: true })
+    acceptedBirdTypes?: BirdType[];
+
+    @ApiPropertyOptional({ enum: OtherPetType, isArray: true })
+    @IsOptional()
+    @IsArray()
+    @ArrayUnique()
+    @IsEnum(OtherPetType, { each: true })
+    acceptedOtherPetTypes?: OtherPetType[];
 }

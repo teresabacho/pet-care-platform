@@ -41,8 +41,12 @@ export default function SearchMap({ centerLat, centerLng, radiusKm, results, hig
     if (!mapRef.current || mapInstance.current) return
 
     const map = L.map(mapRef.current).setView([DEFAULT_LAT, DEFAULT_LNG], DEFAULT_ZOOM)
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap contributors',
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_labels_under/{z}/{x}/{y}{r}.png', {
+      attribution:
+        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+      subdomains: 'abcd',
+      maxZoom: 20,
+      detectRetina: true,
     }).addTo(map)
 
     markersLayer.current = L.layerGroup().addTo(map)
@@ -85,23 +89,43 @@ export default function SearchMap({ centerLat, centerLng, radiusKm, results, hig
         : result.caretaker.user.email
 
       const isHighlighted = result.id === highlightedId
-      const icon = isHighlighted
-        ? L.divIcon({
-            className: '',
-            html: `<div style="background:hsl(221,83%,53%);color:#fff;font-size:11px;font-weight:600;padding:3px 7px;border-radius:999px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.25)">${parseFloat(result.price).toFixed(0)} грн</div>`,
-            iconAnchor: [30, 14],
-          })
-        : L.divIcon({
-            className: '',
-            html: `<div style="background:#fff;color:#333;font-size:11px;font-weight:600;padding:3px 7px;border-radius:999px;white-space:nowrap;border:1.5px solid #ddd;box-shadow:0 1px 4px rgba(0,0,0,.15)">${parseFloat(result.price).toFixed(0)} грн</div>`,
-            iconAnchor: [30, 14],
-          })
+      const tiers = result.tiers ?? []
+      let minPrice: number | null = null
+      for (const t of tiers) {
+        const v = parseFloat(t.basePrice)
+        if (!Number.isNaN(v) && (minPrice === null || v < minPrice)) minPrice = v
+      }
+      const priceText = minPrice !== null ? `${minPrice.toFixed(0)} грн` : '—'
+      const palette = isHighlighted
+        ? { bg: '#18181b', fg: '#ffffff', border: '#18181b', shadow: '0 4px 10px rgba(0,0,0,.25)' }
+        : { bg: '#ffffff', fg: '#18181b', border: '#d4d4d8', shadow: '0 2px 6px rgba(0,0,0,.15)' }
 
-      const marker = L.marker([lat, lng], { icon })
+      const icon = L.divIcon({
+        className: 'price-tag-marker',
+        html: `<div style="
+            width:100%;
+            height:100%;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            background:${palette.bg};
+            color:${palette.fg};
+            border:1.5px solid ${palette.border};
+            border-radius:8px;
+            font:600 12px/1 system-ui,-apple-system,'Segoe UI',sans-serif;
+            white-space:nowrap;
+            box-shadow:${palette.shadow};
+            box-sizing:border-box;
+          ">${priceText}</div>`,
+        iconSize: [70, 28],
+        iconAnchor: [35, 14],
+      })
+
+      const marker = L.marker([lat, lng], { icon, zIndexOffset: isHighlighted ? 1000 : 0 })
       marker.bindPopup(
         `<div style="font-size:13px;min-width:160px">
           <p style="font-weight:600;margin:0 0 4px">${name}</p>
-          <p style="color:#666;margin:0 0 4px">${SERVICE_TYPE_LABELS[result.serviceType] ?? result.serviceType} — ${result.price} грн</p>
+          <p style="color:#666;margin:0 0 4px">${SERVICE_TYPE_LABELS[result.serviceType] ?? result.serviceType}${minPrice !== null ? ` — ${priceText}` : ''}</p>
           <a href="/caretaker/${result.caretaker.userId}" style="color:hsl(221,83%,53%);font-size:12px">Переглянути профіль →</a>
         </div>`,
       )

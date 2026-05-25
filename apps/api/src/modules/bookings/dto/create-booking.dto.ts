@@ -1,6 +1,14 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsDate, IsEnum, IsNumber, IsOptional, IsString, IsUUID, Min } from 'class-validator';
+import {
+    ArrayUnique,
+    IsArray,
+    IsDate,
+    IsEnum,
+    IsOptional,
+    IsString,
+    IsUUID,
+} from 'class-validator';
 import { ServiceType } from '@pet-care/shared';
 
 export class CreateBookingDto {
@@ -16,6 +24,21 @@ export class CreateBookingDto {
     @IsEnum(ServiceType)
     serviceType: ServiceType;
 
+    @ApiProperty({ description: 'ID обраного ServiceTier' })
+    @IsUUID()
+    tierId: string;
+
+    @ApiPropertyOptional({
+        type: [String],
+        description: 'UUID-и обраних ServiceAddon-ів',
+        default: [],
+    })
+    @IsOptional()
+    @IsArray()
+    @ArrayUnique()
+    @IsUUID('4', { each: true })
+    addonIds?: string[];
+
     @ApiProperty({ example: '2026-03-01T10:00:00.000Z' })
     @Type(() => Date)
     @IsDate()
@@ -25,11 +48,6 @@ export class CreateBookingDto {
     @Type(() => Date)
     @IsDate()
     scheduledEnd: Date;
-
-    @ApiProperty({ example: 150 })
-    @IsNumber()
-    @Min(0)
-    price: number;
 
     @ApiPropertyOptional()
     @IsOptional()

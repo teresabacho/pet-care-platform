@@ -17,6 +17,11 @@ import type {
   PetAgeGroup,
   HomeCondition,
   AdditionalServiceCapability,
+  RodentType,
+  BirdType,
+  OtherPetType,
+  MessageType,
+  PaymentStatus,
 } from '@pet-care/shared'
 
 export interface MediaItem {
@@ -76,7 +81,6 @@ export interface CaretakerProfile {
   radiusKm: number | null
   skills: CaretakerSkill[]
   languages: Language[]
-  availabilityFilledUntil: string | null
   availabilityUpdatedAt: string | null
   addressIsPublic: boolean
   isVerified: boolean
@@ -185,25 +189,35 @@ interface BasePolicyFields {
   capabilities: AdditionalServiceCapability[]
 }
 
+interface MultiSpeciesPolicyFields {
+  acceptedCatSizes: CatSize[]
+  acceptedRodentTypes: RodentType[]
+  acceptedBirdTypes: BirdType[]
+  acceptedOtherPetTypes: OtherPetType[]
+}
+
 export interface WalkingPolicy extends BasePolicyFields {
   acceptedCatSizes: CatSize[]
   maxDogsAtOnce: number
 }
 
-export interface PetSittingPolicy extends BasePolicyFields {
-  acceptedCatSizes: CatSize[]
-}
+export interface PetSittingPolicy extends BasePolicyFields, MultiSpeciesPolicyFields {}
 
-export interface BoardingPolicy extends BasePolicyFields {
-  acceptedCatSizes: CatSize[]
+export interface BoardingPolicy extends BasePolicyFields, MultiSpeciesPolicyFields {
   homeConditions: HomeCondition[]
 }
+
+export interface GroomingPolicy extends BasePolicyFields, MultiSpeciesPolicyFields {}
+
+export interface VetVisitPolicy extends BasePolicyFields, MultiSpeciesPolicyFields {}
 
 export interface ServiceOffering {
   id: string
   caretakerId: string
   serviceType: ServiceType
   description: string | null
+  experienceDescription: string | null
+  experienceSkills: string[]
   createdAt: string
   // Enriched on /services and /services/:id responses (Phase 5.5)
   tiers?: ServiceTier[]
@@ -213,6 +227,8 @@ export interface ServiceOffering {
   walkingPolicy?: WalkingPolicy | null
   petSittingPolicy?: PetSittingPolicy | null
   boardingPolicy?: BoardingPolicy | null
+  groomingPolicy?: GroomingPolicy | null
+  vetVisitPolicy?: VetVisitPolicy | null
   // @deprecated — фактично відсутні у відповіді бекенду після Phase 5.5,
   // але залишені для legacy-сторінок (ProfileEditPage, CaretakerCard,
   // SearchPage). На runtime повертають undefined; UI рендериться зламаним
@@ -266,6 +282,12 @@ export interface Booking {
   handoverConfirmedByCaretaker: boolean
   returnConfirmedByOwner: boolean
   returnConfirmedByCaretaker: boolean
+  paymentStatus: PaymentStatus
+  paymentExternalId: string | null
+  paidAt: string | null
+  cancellationReason: string | null
+  cancelledByUserId: string | null
+  cancelledAt: string | null
   createdAt: string
   // joined relations (present in detail responses)
   owner?: User
@@ -288,4 +310,39 @@ export interface ReviewsStats {
   reviews: Review[]
   averageRating: number | null
   totalCount: number
+}
+
+// ── Chat ────────────────────────────────────────────────────────────────────
+
+export interface ChatMessageMedia {
+  messageId: string
+  mediaItemId: string
+  orderIndex: number
+  mediaItem?: MediaItem
+}
+
+export interface ChatMessage {
+  id: string
+  conversationId: string
+  senderId: string
+  messageType: MessageType
+  text: string | null
+  readAt: string | null
+  createdAt: string
+  mediaItems?: ChatMessageMedia[]
+}
+
+export interface ChatConversation {
+  id: string
+  otherParticipant: {
+    id: string
+    firstName: string | null
+    lastName: string | null
+    email: string
+    avatarUrl: string | null
+  }
+  lastMessage: ChatMessage | null
+  unreadCount: number
+  lastMessageAt: string | null
+  createdAt: string
 }

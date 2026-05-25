@@ -1,7 +1,10 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { format } from 'date-fns'
+import type { DateRange } from 'react-day-picker'
 import { TileSelectDropdown, type TileOption } from '@/components/ui/tile-select-dropdown'
-import { CitySelectDropdown } from '@/components/ui/city-select-dropdown'
+import { CitySelectDropdown, EMPTY_CITY, type CityValue } from '@/components/ui/city-select-dropdown'
+import { DateRangePopover } from '@/components/ui/date-range-popover'
 
 const PET_OPTIONS: TileOption[] = [
   { value: 'dog', label: 'Собака', emoji: '🐕' },
@@ -23,13 +26,25 @@ function HeroSection() {
   const navigate = useNavigate()
   const [pet, setPet] = useState('')
   const [service, setService] = useState('')
-  const [city, setCity] = useState('')
-
+  const [city, setCity] = useState<CityValue>(EMPTY_CITY)
+  const [dates, setDates] = useState<DateRange | undefined>(undefined)
+  const [flexibleDates, setFlexibleDates] = useState(false)
   function handleSearch() {
     const params = new URLSearchParams()
     if (pet) params.set('pet', pet)
     if (service) params.set('service', service)
-    if (city) params.set('city', city)
+    if (city.label) {
+      params.set('city', city.label)
+      if (city.lat != null) params.set('lat', city.lat.toString())
+      if (city.lng != null) params.set('lng', city.lng.toString())
+      if (city.country) params.set('country', city.country)
+    }
+    if (flexibleDates) {
+      params.set('flexible', '1')
+    } else {
+      if (dates?.from) params.set('from', format(dates.from, 'yyyy-MM-dd'))
+      if (dates?.to) params.set('to', format(dates.to, 'yyyy-MM-dd'))
+    }
     navigate(`/search?${params.toString()}`)
   }
 
@@ -37,22 +52,22 @@ function HeroSection() {
     <section className="relative overflow-hidden">
       {/* background image */}
       <div
-        className="absolute inset-0 bg-cover bg-center opacity-30 pointer-events-none rounded-xl mx-8 mt-4"
-        style={{ backgroundImage: 'url(/hero-bg.png)', top: 80, bottom: 0 }}
+        className="absolute inset-0 bg-cover bg-center pointer-events-none rounded-xl mx-8 mt-4"
+        style={{ backgroundImage: 'url(/hero.png)' }}
       />
 
       <div className="relative max-w-7xl mx-auto px-6 pt-20 pb-0 text-center">
-        <h1 className="text-5xl font-bold text-zinc-900 leading-tight max-w-2xl mx-auto">
+        <h1
+          className="text-5xl font-bold text-white leading-tight max-w-2xl mx-auto"
+          style={{ textShadow: '0 2px 12px rgba(0,0,0,0.55), 0 1px 3px rgba(0,0,0,0.4)' }}
+        >
           Дбайливі люди для ваших пухнастих друзів
         </h1>
-        <p className="mt-6 text-2xl text-zinc-700 max-w-3xl mx-auto leading-snug">
-          Знайдіть перевіреного доглядальника чи вигульника — вручну або за допомогою штучного інтелекту
-        </p>
       </div>
 
       {/* search card */}
-      <div className="relative max-w-5xl mx-auto mt-10 mb-0 px-6">
-        <div className="bg-slate-200 rounded-lg px-10 py-8 flex flex-col gap-6 items-center">
+      <div className="relative max-w-5xl mx-auto mt-26 mb-0 px-6">
+        <div className="bg-white/40 backdrop-blur-md border border-white/50 shadow-lg rounded-lg px-10 py-8 flex flex-col gap-6 items-center">
           {/* fields row */}
           <div className="flex flex-col md:flex-row gap-4 w-full">
             <TileSelectDropdown
@@ -74,21 +89,25 @@ function HeroSection() {
             />
 
             <CitySelectDropdown
-              label="У якому місті потрібна допомога?"
+              label="У якому місті?"
               placeholder="Оберіть місто чи адресу"
               value={city}
               onChange={setCity}
               className="flex-1"
             />
 
-            <div className="flex-1 flex flex-col gap-2">
-              <label className="text-sm font-medium text-zinc-900">На які дати потрібна допомога?</label>
-              <input
-                type="text"
-                placeholder="Оберіть дати"
-                className="bg-white border border-zinc-200 rounded-md h-10 px-3 text-sm text-zinc-500 w-full"
-              />
-            </div>
+            <DateRangePopover
+              label="На які дати?"
+              placeholder="Оберіть дати"
+              value={dates}
+              flexible={flexibleDates}
+              onChange={(range, flexible) => {
+                setDates(range)
+                setFlexibleDates(flexible)
+              }}
+              className="flex-1"
+            />
+
           </div>
 
           {/* buttons */}
@@ -99,20 +118,6 @@ function HeroSection() {
             >
               Шукати
             </button>
-
-            <span className="text-sm font-medium text-zinc-900">або спробуйте</span>
-
-            <div className="relative w-80">
-              <button
-                onClick={() => navigate('/search?ai=1')}
-                className="bg-purple-500 text-white rounded-md h-10 px-6 text-sm font-medium w-full hover:bg-purple-600 transition-colors"
-              >
-                Підібрати ідеального доглядальника
-              </button>
-              <span className="absolute -top-3 -left-4 rotate-[-2.66deg] bg-zinc-100 border border-transparent rounded-full px-2.5 py-0.5 text-xs font-medium text-zinc-900 flex items-center gap-1 whitespace-nowrap">
-                ⭐ Розумний підбір
-              </span>
-            </div>
           </div>
         </div>
       </div>
@@ -121,51 +126,8 @@ function HeroSection() {
 }
 
 function HowItWorksSection() {
-  const steps = [
-    {
-      icon: '📋',
-      title: 'Заповнення анкети',
-      desc: 'Ви швидко заповнюєте коротку анкету з інформацією про вашу тварину та ваші побажання',
-    },
-    {
-      icon: '🤖',
-      title: 'Аналіз даних ШІ',
-      desc: 'Наш штучний інтелект миттєво аналізує введені дані та порівнює їх з профілями доглядальників',
-    },
-    {
-      icon: '⚡',
-      title: 'Швидкий підбір',
-      desc: 'Система формує персональний рейтинг доглядальників, які найкраще підходять саме вам',
-    },
-    {
-      icon: '📅',
-      title: 'Бронювання доглядальника',
-      desc: 'Ви обираєте зручного фахівця та оформлюєте замовлення в кілька кліків',
-    },
-  ]
-
   return (
-    <section className="max-w-5xl mx-auto px-6 py-20">
-      <div className="text-center mb-14">
-        <h2 className="text-4xl font-bold text-zinc-900">Як працює розумний підбір?</h2>
-        <p className="mt-4 text-base text-zinc-500 max-w-lg mx-auto">
-          Пояснюємо, як за 4 кроки штучний інтелект знаходить ідеального доглядальника:
-        </p>
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
-        {steps.map(step => (
-          <div key={step.title} className="flex flex-col items-center text-center gap-4">
-            <div className="w-10 h-10 flex items-center justify-center rounded-md bg-white border border-zinc-200 shadow-sm text-xl">
-              {step.icon}
-            </div>
-            <div className="flex flex-col gap-2">
-              <p className="font-semibold text-zinc-900 text-base">{step.title}</p>
-              <p className="text-sm text-zinc-500 leading-snug">{step.desc}</p>
-            </div>
-          </div>
-        ))}
-      </div>
+    <section className="max-w-5xl mx-auto px-6 py-2">
     </section>
   )
 }
@@ -231,13 +193,13 @@ function ServiceCardsSection() {
     },
     {
       emoji: '🦮',
-      title: 'Денна сидівка',
+      title: 'Денний догляд',
       desc: 'Ваш улюбленець проводить день у доглядальника в теплій домашній атмосфері, поки ви на роботі.',
       badge: null,
     },
     {
       emoji: '🌙',
-      title: 'Нічна передержка',
+      title: 'Нічна перетримка',
       desc: 'Ваш улюбленець залишається у перевіреного доглядальника на ніч або кілька днів.',
       badge: null,
     },
@@ -476,9 +438,12 @@ function FooterSection() {
 
 // ── Main export ──────────────────────────────────────────────────────────────
 
+import CaretakerOnboardingBanner from '../components/CaretakerOnboardingBanner'
+
 export default function HomePage() {
   return (
     <div className="bg-white">
+      <CaretakerOnboardingBanner />
       <HeroSection />
       <HowItWorksSection />
       <BenefitsSection />

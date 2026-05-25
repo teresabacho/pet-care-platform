@@ -1,16 +1,27 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { BookingsRepository } from './bookings.repository';
 import { CreateBookingDto } from './dto/create-booking.dto';
 import { UpdateBookingStatusDto } from './dto/update-booking-status.dto';
 import { BookingStatus } from '@pet-care/shared';
 import { Booking } from './entities/booking.entity';
+import { Pet } from '../pets/entities/pet.entity';
 import { TrackingService } from '../tracking/tracking.service';
+import { ChatService } from '../chat/chat.service';
+import { ChatGateway } from '../chat/chat.gateway';
+import { BookingPricingService } from './booking-pricing.service';
 
 @Injectable()
 export class BookingsService {
     constructor(
         private readonly bookingsRepository: BookingsRepository,
         private readonly trackingService: TrackingService,
+        private readonly pricingService: BookingPricingService,
+        private readonly chatService: ChatService,
+        private readonly chatGateway: ChatGateway,
+        @InjectRepository(Pet)
+        private readonly petRepo: Repository<Pet>,
     ) {}
 
     // HANDOVER_PENDING and RETURN_PENDING can only be exited via confirm endpoints, not via PATCH /status
@@ -24,8 +35,50 @@ export class BookingsService {
         [BookingStatus.CANCELLED]:         [],
     };
 
-    create(ownerId: string, dto: CreateBookingDto): Promise<Booking> {
-        return this.bookingsRepository.create(ownerId, dto);
+    async create(ownerId: string, dto: CreateBookingDto): Promise<Booking> {
+        const pet = await this.petRepo.findOne({ where: { id: dto.petId } });
+        if (!pet) {
+            throw new NotFoundException('Тваринку не знайдено');
+        }
+        if (pet.ownerId !== ownerId) {
+            throw new ForbiddenException('Це не ваша тваринка');
+        }
+
+        const { price } = await this.pricingService.calculate({
+            tierId: dto.tierId,
+            addonIds: dto.addonIds ?? [],
+            pet,
+            scheduledStart: dto.scheduledStart,
+            scheduledEnd: dto.scheduledEnd,
+        });
+
+        const booking = await this.bookingsRepository.create(ownerId, {
+            caretakerId: dto.caretakerId,
+            petId: dto.petId,
+            serviceType: dto.serviceType,
+            scheduledStart: dto.scheduledStart,
+            scheduledEnd: dto.scheduledEnd,
+            tierId: dto.tierId,
+            addonIds: dto.addonIds ?? [],
+            price,
+            notes: dto.notes ?? null,
+        });
+
+        // Auto-create розмову між owner і caretaker (idempotent — якщо вже існує, поверне існуючу).
+        try {
+            const conv = await this.chatService.startConversation(
+                ownerId,
+                dto.caretakerId,
+            );
+            this.chatGateway.addParticipantsToRoom(conv.id, [
+                conv.participantAId,
+                conv.participantBId,
+            ]);
+        } catch {
+            // Не блокуємо створення замовлення якщо чат впав.
+        }
+
+        return booking;
     }
 
     getMyBookings(userId: string): Promise<Booking[]> {
@@ -56,13 +109,27 @@ export class BookingsService {
             );
         }
 
-        const updated = await this.bookingsRepository.updateStatus(id, dto.status);
-
         if (dto.status === BookingStatus.CANCELLED) {
+            const reason = dto.cancellationReason?.trim();
+            if (!reason) {
+                throw new BadRequestException(
+                    'Вкажіть причину скасування',
+                );
+            }
+            const updated = await this.bookingsRepository.updateStatus(
+                id,
+                dto.status,
+                {
+                    cancellationReason: reason,
+                    cancelledByUserId: userId,
+                    cancelledAt: new Date(),
+                },
+            );
             await this.trackingService.cancelSession(booking.id);
+            return updated;
         }
 
-        return updated;
+        return this.bookingsRepository.updateStatus(id, dto.status);
     }
 
     async confirmHandover(bookingId: string, userId: string): Promise<Booking> {

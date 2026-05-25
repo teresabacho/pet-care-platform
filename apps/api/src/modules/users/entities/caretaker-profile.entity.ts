@@ -46,13 +46,9 @@ export class CaretakerProfile {
     languages: Language[];
 
     // ── Календар доступності ───────────────────────────────────────────
-    // Caretaker періодично оновлює дату «доступний до». Якщо лишилось
-    // менше доби — UI підсвічує червоним; якщо вже минула — теж червоний
-    // як «прострочено». availabilityUpdatedAt оновлюється сервером
-    // кожного разу, коли змінюється availabilityFilledUntil.
-    @Column({ type: 'date', nullable: true, name: 'availability_filled_until' })
-    availabilityFilledUntil: Date | null;
-
+    // Самі слоти зберігаються у CaretakerAvailability (один рядок = один
+    // вільний слот). Тут лише timestamp останнього оновлення сітки —
+    // дашборд показує "коли востаннє caretaker торкався розкладу".
     @Column({
         type: 'timestamp',
         nullable: true,

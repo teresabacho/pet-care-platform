@@ -1,123 +1,177 @@
-import { useState, useEffect } from 'react'
-import { useParams, Link } from 'react-router-dom'
-import { ServiceType } from '@pet-care/shared'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Loader2 } from 'lucide-react'
+import { MediaOwnerType, ServiceType } from '@pet-care/shared'
 import { usersService } from '../services/users.service'
 import { serviceOfferingsService } from '../services/service-offerings.service'
-import { reviewsService } from '../services/reviews.service'
-import type { UserPublic, ServiceOffering, ReviewsStats } from '../types'
-
-const SERVICE_LABELS: Record<ServiceType, string> = {
-  [ServiceType.WALKING]: 'Вигул',
-  [ServiceType.PET_SITTING]: 'Догляд вдома',
-  [ServiceType.BOARDING]: 'Пансіон',
-  [ServiceType.GROOMING]: 'Грумінг',
-  [ServiceType.VET_VISIT]: 'Ветеринар',
-}
+import { chatService } from '../services/chat.service'
+import { useAuthStore } from '../store/authStore'
+import type { ServiceOffering, UserPublic } from '../types'
+import CaretakerSummaryCard from '../components/caretaker/CaretakerSummaryCard'
+import { MediaGallerySection } from '../components/media'
+import InfoCards from '../components/caretaker/InfoCards'
+import LocationSection from '../components/caretaker/LocationSection'
+import ServiceTabBar from '../components/caretaker/ServiceTabBar'
+import ExperienceSection from '../components/caretaker/ExperienceSection'
+import PetAcceptance from '../components/caretaker/PetAcceptance'
+import ServiceConditions from '../components/caretaker/ServiceConditions'
+import PriceList from '../components/caretaker/PriceList'
+import CertificatesSection from '../components/caretaker/CertificatesSection'
 
 export default function CaretakerPage() {
   const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
   const [user, setUser] = useState<UserPublic | null>(null)
   const [offerings, setOfferings] = useState<ServiceOffering[]>([])
-  const [reviews, setReviews] = useState<ReviewsStats | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
+  const [activeService, setActiveService] = useState<ServiceType | null>(null)
+  const priceListRef = useRef<HTMLElement>(null)
 
   useEffect(() => {
     if (!id) return
-    Promise.all([
-      usersService.getById(id),
-      serviceOfferingsService.getByCaretaker(id),
-      reviewsService.getByUser(id),
-    ])
-      .then(([userData, offeringsData, reviewsData]) => {
+    setIsLoading(true)
+    setNotFound(false)
+    Promise.all([usersService.getById(id), serviceOfferingsService.getByCaretaker(id)])
+      .then(([userData, offeringsData]) => {
         setUser(userData)
         setOfferings(offeringsData)
-        setReviews(reviewsData)
+        if (offeringsData.length > 0) {
+          setActiveService(offeringsData[0].serviceType)
+        }
       })
       .catch(() => setNotFound(true))
       .finally(() => setIsLoading(false))
   }, [id])
 
-  if (isLoading) return <div className="text-center py-12 text-gray-400">Завантаження...</div>
-  if (notFound || !user) return (
-    <div className="text-center py-12">
-      <p className="text-gray-500 mb-3">Профіль не знайдено</p>
-      <Link to="/search" className="text-blue-600 hover:underline">← Повернутись до пошуку</Link>
-    </div>
+  const profile = user?.caretakerProfile ?? null
+
+  // unique service types from this caretaker's offerings
+  const serviceTypes = useMemo(() => {
+    const seen = new Set<ServiceType>()
+    return offerings
+      .filter((o) => {
+        if (seen.has(o.serviceType)) return false
+        seen.add(o.serviceType)
+        return true
+      })
+      .map((o) => o.serviceType)
+  }, [offerings])
+
+  const activeOffering = useMemo(
+    () => offerings.find((o) => o.serviceType === activeService) ?? null,
+    [offerings, activeService],
   )
 
-  const profile = user.caretakerProfile
-  const fullName = [user.firstName, user.lastName].filter(Boolean).join(' ') || user.email
+  function scrollToPricelist() {
+    priceListRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-24 text-zinc-400">
+        <Loader2 className="w-7 h-7 animate-spin" />
+      </div>
+    )
+  }
+
+  if (notFound || !user || !profile) {
+    return (
+      <div className="text-center py-16">
+        <p className="text-zinc-500 mb-3">Профіль не знайдено</p>
+        <Link to="/search" className="text-zinc-900 underline">
+          ← Повернутись до пошуку
+        </Link>
+      </div>
+    )
+  }
 
   return (
-    <div className="max-w-2xl mx-auto space-y-5">
-      {/* Header */}
-      <div className="bg-white rounded-xl shadow p-6">
-        <div className="flex items-start justify-between">
-          <div>
-            <h1 className="text-2xl font-bold">{fullName}</h1>
-            {reviews && reviews.totalCount > 0 && (
-              <p className="text-yellow-500 mt-1">
-                ★ {reviews.averageRating?.toFixed(1)} · {reviews.totalCount} відгук{reviews.totalCount > 1 ? 'ів' : ''}
-              </p>
-            )}
-          </div>
-          {profile?.isVerified && (
-            <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
-              Верифіковано
-            </span>
-          )}
+    <div className="bg-zinc-50 min-h-[calc(100vh-4rem)]">
+      <div className="max-w-[1400px] mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-[380px_minmax(0,1fr)] gap-6">
+        {/* LEFT — sticky summary */}
+        <div className="lg:sticky lg:top-4 lg:self-start lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto">
+          <CaretakerSummaryCard
+            user={user}
+            profile={profile}
+            offerings={offerings}
+            onShowFullPricelist={scrollToPricelist}
+            onMessage={async () => {
+              if (!isAuthenticated) {
+                navigate(
+                  `/login?redirect=${encodeURIComponent(window.location.pathname)}`,
+                )
+                return
+              }
+              try {
+                const { id: convId } = await chatService.startConversation(
+                  user.id,
+                )
+                navigate(`/messages/${convId}`)
+              } catch {
+                // silent failure — UI fallback could be a toast later
+              }
+            }}
+            onBook={() => {
+              if (!isAuthenticated) {
+                navigate(
+                  `/login?redirect=${encodeURIComponent(window.location.pathname)}`,
+                )
+                return
+              }
+              const params = new URLSearchParams({ caretakerId: user.id })
+              if (activeService) params.set('service', activeService)
+              navigate(`/bookings/new?${params.toString()}`)
+            }}
+          />
         </div>
-        {profile?.bio && <p className="mt-3 text-gray-600">{profile.bio}</p>}
-        <div className="flex flex-wrap gap-4 mt-4 text-sm text-gray-500">
-          {profile?.experienceYears != null && (
-            <span>Досвід: {profile.experienceYears} р.</span>
+
+        {/* RIGHT — scrollable detail */}
+        <div className="flex flex-col gap-6 min-w-0">
+          {profile && (
+            <MediaGallerySection
+              ownerType={MediaOwnerType.CARETAKER_GALLERY}
+              ownerId={profile.id}
+            />
           )}
-          {profile?.radiusKm != null && (
-            <span>Радіус: {profile.radiusKm} км</span>
+
+          <InfoCards profile={profile} />
+
+          <LocationSection profile={profile} />
+
+          <section className="flex flex-col gap-3">
+            <h2 className="text-base font-semibold text-zinc-900">Про мене</h2>
+            <p className="text-sm text-zinc-600 leading-relaxed whitespace-pre-line">
+              {profile.bio ?? 'Доглядальник ще не додав опис.'}
+            </p>
+          </section>
+
+          {/* Tabs control both experience + pricelist sections below */}
+          {activeService && serviceTypes.length > 0 && activeOffering && (
+            <>
+              <ServiceTabBar
+                services={serviceTypes}
+                active={activeService}
+                onChange={setActiveService}
+              />
+
+              <ExperienceSection
+                profile={profile}
+                offering={activeOffering}
+              />
+
+              <PetAcceptance offering={activeOffering} />
+
+              <ServiceConditions offering={activeOffering} />
+
+              <PriceList ref={priceListRef} offering={activeOffering} />
+            </>
           )}
+
+          <CertificatesSection caretakerProfileId={profile.id} />
         </div>
       </div>
-
-      {/* Services */}
-      {offerings.length > 0 && (
-        <div className="bg-white rounded-xl shadow p-6">
-          <h2 className="text-lg font-semibold mb-3">Послуги</h2>
-          <div className="space-y-2">
-            {offerings.map((offering) => (
-              <div key={offering.id} className="flex items-center justify-between py-2 border-b last:border-0">
-                <div>
-                  <p className="font-medium text-sm">{SERVICE_LABELS[offering.serviceType]}</p>
-                  {offering.description && (
-                    <p className="text-xs text-gray-400">{offering.description}</p>
-                  )}
-                </div>
-                <span className="text-blue-700 font-semibold text-sm">{offering.price} грн</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Reviews */}
-      {reviews && reviews.reviews.length > 0 && (
-        <div className="bg-white rounded-xl shadow p-6">
-          <h2 className="text-lg font-semibold mb-3">Відгуки</h2>
-          <div className="space-y-3">
-            {reviews.reviews.map((review) => (
-              <div key={review.id} className="border-b last:border-0 pb-3 last:pb-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-yellow-500">{'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}</span>
-                  <span className="text-xs text-gray-400">
-                    {new Date(review.createdAt).toLocaleDateString('uk-UA')}
-                  </span>
-                </div>
-                {review.comment && <p className="text-sm text-gray-600">{review.comment}</p>}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   )
 }

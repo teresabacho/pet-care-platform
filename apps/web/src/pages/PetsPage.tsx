@@ -1,200 +1,208 @@
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import { Calendar as CalendarIcon, ChevronRight, Loader2, Pencil, Plus, Trash2, Weight, Zap } from 'lucide-react'
+import { Card } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { cn } from '@/lib/utils'
 import { petsService } from '../services/pets.service'
+import {
+  ENERGY_LABEL,
+  SEX_LABEL,
+  SPECIES_EMOJI,
+  SPECIES_LABEL,
+  breedDisplay,
+  formatAge,
+} from '../lib/pet-display'
 import type { Pet } from '../types'
 
-interface PetFormData {
-  name: string
-  species: string
-  breed: string
-  age: string
-  weight: string
-  specialNeeds: string
-  description: string
-}
-
-const emptyForm: PetFormData = {
-  name: '', species: '', breed: '', age: '',
-  weight: '', specialNeeds: '', description: '',
-}
-
-function petToForm(pet: Pet): PetFormData {
-  return {
-    name: pet.name,
-    species: pet.species ?? '',
-    breed: pet.breed ?? '',
-    age: pet.age?.toString() ?? '',
-    weight: pet.weight ?? '',
-    specialNeeds: pet.specialNeeds ?? '',
-    description: pet.description ?? '',
-  }
-}
-
 export default function PetsPage() {
+  const navigate = useNavigate()
   const [pets, setPets] = useState<Pet[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [showForm, setShowForm] = useState(false)
-  const [editingPet, setEditingPet] = useState<Pet | null>(null)
-  const [form, setForm] = useState<PetFormData>(emptyForm)
-  const [isSaving, setIsSaving] = useState(false)
-  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
+  const [petToDelete, setPetToDelete] = useState<Pet | null>(null)
 
   useEffect(() => {
-    petsService.getMyPets()
+    petsService
+      .getMyPets()
       .then(setPets)
       .finally(() => setIsLoading(false))
   }, [])
 
-  const openAddForm = () => { setEditingPet(null); setForm(emptyForm); setShowForm(true) }
-  const openEditForm = (pet: Pet) => { setEditingPet(pet); setForm(petToForm(pet)); setShowForm(true) }
-  const closeForm = () => { setShowForm(false); setEditingPet(null); setForm(emptyForm) }
-  const setField = (field: keyof PetFormData, value: string) =>
-    setForm((prev) => ({ ...prev, [field]: value }))
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsSaving(true)
-    const dto = {
-      name: form.name,
-      species: form.species || undefined,
-      breed: form.breed || undefined,
-      age: form.age ? Number(form.age) : undefined,
-      weight: form.weight ? Number(form.weight) : undefined,
-      specialNeeds: form.specialNeeds || undefined,
-      description: form.description || undefined,
-    }
-    try {
-      if (editingPet) {
-        const updated = await petsService.update(editingPet.id, dto)
-        setPets((prev) => prev.map((p) => (p.id === updated.id ? updated : p)))
-      } else {
-        const created = await petsService.create(dto)
-        setPets((prev) => [...prev, created])
-      }
-      closeForm()
-    } finally {
-      setIsSaving(false)
-    }
+  async function handleDelete() {
+    if (!petToDelete) return
+    await petsService.delete(petToDelete.id)
+    setPets((prev) => prev.filter((p) => p.id !== petToDelete.id))
   }
-
-  const handleDelete = async (id: string) => {
-    await petsService.delete(id)
-    setPets((prev) => prev.filter((p) => p.id !== id))
-    setDeleteConfirmId(null)
-  }
-
-  if (isLoading) return <div className="text-center py-12 text-gray-400">Завантаження...</div>
 
   return (
-    <div className="max-w-2xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">Мої тварини</h1>
-        {!showForm && (
-          <button onClick={openAddForm}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
-            + Додати тварину
-          </button>
+    <div className="bg-zinc-50 min-h-[calc(100vh-4rem)]">
+      <div className="max-w-3xl mx-auto px-4 py-8 flex flex-col gap-5">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex flex-col">
+            <h1 className="text-2xl font-semibold text-foreground">Мої тваринки</h1>
+            <p className="text-sm text-muted-foreground">
+              Усі ваші улюбленці. Можна переглянути, редагувати чи видалити.
+            </p>
+          </div>
+          <Button asChild>
+            <Link to="/pets/new">
+              <Plus className="w-3.5 h-3.5 mr-1.5" />
+              Додати тваринку
+            </Link>
+          </Button>
+        </div>
+
+        {isLoading ? (
+          <div className="flex items-center justify-center py-16 text-muted-foreground">
+            <Loader2 className="w-6 h-6 animate-spin" />
+          </div>
+        ) : pets.length === 0 ? (
+          <Card>
+            <div className="flex flex-col items-center gap-3 py-12 text-center">
+              <div className="w-16 h-16 rounded-full bg-zinc-100 flex items-center justify-center text-3xl">
+                🐾
+              </div>
+              <p className="text-sm text-muted-foreground">Ще не додано жодної тваринки</p>
+              <Button asChild>
+                <Link to="/pets/new">
+                  <Plus className="w-3.5 h-3.5 mr-1.5" />
+                  Додати тваринку
+                </Link>
+              </Button>
+            </div>
+          </Card>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {pets.map((pet) => (
+              <PetRow
+                key={pet.id}
+                pet={pet}
+                onView={() => navigate(`/pets/${pet.id}`)}
+                onEdit={() => navigate(`/pets/${pet.id}/edit`)}
+                onDelete={() => setPetToDelete(pet)}
+              />
+            ))}
+          </div>
         )}
       </div>
 
-      {showForm && (
-        <div className="bg-white rounded-xl shadow p-6 mb-6">
-          <h2 className="text-lg font-semibold mb-4">
-            {editingPet ? 'Редагувати тварину' : 'Нова тварина'}
-          </h2>
-          <form onSubmit={handleSubmit} className="space-y-3">
-            <div>
-              <label className="block text-sm text-gray-600 mb-1">Кличка *</label>
-              <input required value={form.name} onChange={(e) => setField('name', e.target.value)}
-                className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-sm text-gray-600 mb-1">Вид</label>
-                <input value={form.species} onChange={(e) => setField('species', e.target.value)}
-                  placeholder="Собака, Кіт..." className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-              </div>
-              <div>
-                <label className="block text-sm text-gray-600 mb-1">Порода</label>
-                <input value={form.breed} onChange={(e) => setField('breed', e.target.value)}
-                  className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-sm text-gray-600 mb-1">Вік (років)</label>
-                <input type="number" min={0} value={form.age} onChange={(e) => setField('age', e.target.value)}
-                  className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-              </div>
-              <div>
-                <label className="block text-sm text-gray-600 mb-1">Вага (кг)</label>
-                <input type="number" min={0} step="0.1" value={form.weight} onChange={(e) => setField('weight', e.target.value)}
-                  className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm text-gray-600 mb-1">Особливі потреби</label>
-              <input value={form.specialNeeds} onChange={(e) => setField('specialNeeds', e.target.value)}
-                placeholder="Алергії, ліки, обмеження..."
-                className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            </div>
-            <div className="flex gap-3">
-              <button type="submit" disabled={isSaving}
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50">
-                {isSaving ? 'Зберігаємо...' : 'Зберегти'}
-              </button>
-              <button type="button" onClick={closeForm} className="text-gray-500 hover:text-gray-700">
-                Скасувати
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {pets.length === 0 && !showForm ? (
-        <div className="text-center py-12 bg-white rounded-xl shadow">
-          <div className="text-5xl mb-3">🐾</div>
-          <p className="text-gray-500">У вас ще немає тварин</p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {pets.map((pet) => (
-            <div key={pet.id} className="bg-white rounded-xl shadow p-5 flex items-start justify-between">
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="font-semibold text-lg">{pet.name}</span>
-                  {pet.species && (
-                    <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
-                      {pet.species}
-                    </span>
-                  )}
-                </div>
-                <div className="text-sm text-gray-500 space-y-0.5">
-                  {pet.breed && <p>Порода: {pet.breed}</p>}
-                  {pet.age != null && <p>Вік: {pet.age} р.</p>}
-                  {pet.weight && <p>Вага: {pet.weight} кг</p>}
-                  {pet.specialNeeds && <p className="text-orange-600">⚠️ {pet.specialNeeds}</p>}
-                </div>
-              </div>
-              <div className="flex gap-2 text-sm">
-                <button onClick={() => openEditForm(pet)} className="text-blue-600 hover:underline">
-                  Ред.
-                </button>
-                {deleteConfirmId === pet.id ? (
-                  <div className="flex gap-1 items-center">
-                    <button onClick={() => handleDelete(pet.id)} className="text-red-600 font-medium hover:underline">Так</button>
-                    <span className="text-gray-300">|</span>
-                    <button onClick={() => setDeleteConfirmId(null)} className="text-gray-500 hover:underline">Ні</button>
-                  </div>
-                ) : (
-                  <button onClick={() => setDeleteConfirmId(pet.id)} className="text-red-400 hover:text-red-600">
-                    Вид.
-                  </button>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+      <ConfirmDialog
+        open={petToDelete != null}
+        onOpenChange={(open) => !open && setPetToDelete(null)}
+        title={petToDelete ? `Видалити ${petToDelete.name}?` : 'Видалити тваринку?'}
+        description="Ця дія незворотна. Уся інформація про тваринку буде видалена назавжди."
+        confirmLabel="Видалити"
+        variant="destructive"
+        onConfirm={handleDelete}
+      />
     </div>
+  )
+}
+
+interface PetRowProps {
+  pet: Pet
+  onView: () => void
+  onEdit: () => void
+  onDelete: () => void
+}
+
+function PetRow({ pet, onView, onEdit, onDelete }: PetRowProps) {
+  const speciesKey = (pet.species ?? 'other').toLowerCase()
+  const emoji = SPECIES_EMOJI[speciesKey] ?? '🐾'
+  const ageStr = formatAge(pet.age, pet.ageMonths)
+  const breedStr = breedDisplay(pet.breed)
+  const energyLabel = pet.details?.energyLevel ? ENERGY_LABEL[pet.details.energyLevel] : null
+
+  return (
+    <Card
+      onClick={onView}
+      className={cn(
+        'group p-4 flex items-stretch gap-4 cursor-pointer',
+        'hover:shadow-md hover:border-zinc-300 transition',
+      )}
+    >
+      {/* Avatar / photo placeholder */}
+      <div className="shrink-0 w-20 h-20 rounded-lg bg-gradient-to-br from-zinc-100 to-zinc-200 flex items-center justify-center text-3xl overflow-hidden">
+        {pet.photoUrl ? (
+          <img src={pet.photoUrl} alt={pet.name} className="w-full h-full object-cover" />
+        ) : (
+          emoji
+        )}
+      </div>
+
+      <div className="flex-1 min-w-0 flex flex-col gap-1.5">
+        <div className="flex items-baseline gap-2 min-w-0">
+          <h3 className="text-base font-semibold text-foreground truncate">{pet.name}</h3>
+          <span className="text-xs text-muted-foreground shrink-0">
+            {SPECIES_LABEL[speciesKey] ?? '—'}
+          </span>
+        </div>
+
+        {breedStr && (
+          <p className="text-xs text-muted-foreground truncate">{breedStr}</p>
+        )}
+
+        {/* Detail badges */}
+        <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
+          {ageStr && (
+            <Badge variant="secondary" className="font-normal gap-1">
+              <CalendarIcon className="w-3 h-3" />
+              {ageStr}
+            </Badge>
+          )}
+          {pet.weight != null && (
+            <Badge variant="secondary" className="font-normal gap-1">
+              <Weight className="w-3 h-3" />
+              {pet.weight} кг
+            </Badge>
+          )}
+          {pet.sex && SEX_LABEL[pet.sex] && (
+            <Badge variant="secondary" className="font-normal">
+              {SEX_LABEL[pet.sex]}
+            </Badge>
+          )}
+          {energyLabel && (
+            <Badge variant="secondary" className="font-normal gap-1">
+              <Zap className="w-3 h-3" />
+              {energyLabel}
+            </Badge>
+          )}
+        </div>
+      </div>
+
+      <div className="shrink-0 flex flex-col items-end justify-between gap-2">
+        <div className="flex gap-1">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation()
+              onEdit()
+            }}
+            aria-label="Редагувати"
+            className="h-8 w-8 p-0"
+          >
+            <Pencil className="w-3.5 h-3.5" />
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation()
+              onDelete()
+            }}
+            aria-label="Видалити"
+            className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </Button>
+        </div>
+        <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition" />
+      </div>
+    </Card>
   )
 }

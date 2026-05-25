@@ -171,6 +171,28 @@ describe('Users (e2e)', () => {
             expect(Number(res.body.hourlyRate)).toBe(200);
         });
 
+        it('should update skills and addressIsPublic', async () => {
+            const res = await request(app.getHttpServer())
+                .patch('/users/me/caretaker-profile')
+                .set('Authorization', `Bearer ${accessToken}`)
+                .send({
+                    skills: ['INJECTIONS', 'FIRST_AID'],
+                    addressIsPublic: true,
+                })
+                .expect(200);
+
+            expect(res.body.skills).toEqual(expect.arrayContaining(['INJECTIONS', 'FIRST_AID']));
+            expect(res.body.addressIsPublic).toBe(true);
+        });
+
+        it('should reject invalid skill values', async () => {
+            await request(app.getHttpServer())
+                .patch('/users/me/caretaker-profile')
+                .set('Authorization', `Bearer ${accessToken}`)
+                .send({ skills: ['NOT_A_REAL_SKILL'] })
+                .expect(400);
+        });
+
         it('should return 401 without token', async () => {
             await request(app.getHttpServer())
                 .patch('/users/me/caretaker-profile')

@@ -2,14 +2,23 @@ import { apiClient } from './api'
 import type { ServiceType } from '@pet-care/shared'
 import type { UserPublic, CaretakerProfile } from '../types'
 
-interface UpdateUserDto {
+interface AddressFieldsDto {
+  country?: string
+  city?: string
+  street?: string
+  apartment?: string
+  floor?: string
+  entrance?: string
+}
+
+interface UpdateUserDto extends AddressFieldsDto {
   firstName?: string
   lastName?: string
   phone?: string
   avatarUrl?: string
 }
 
-interface CaretakerProfileDto {
+interface CaretakerProfileDto extends AddressFieldsDto {
   bio?: string
   experienceYears?: number
   hourlyRate?: number

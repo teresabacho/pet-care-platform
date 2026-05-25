@@ -31,6 +31,15 @@ export class ServiceOffering {
     @Column({ type: 'text', nullable: true })
     description: string | null;
 
+    // Опис досвіду саме у цій послузі (на відміну від загального CaretakerProfile.bio).
+    // Відображається на публічній сторінці у блоці «Досвід та навички — {послуга}».
+    @Column({ type: 'text', nullable: true, name: 'experience_description' })
+    experienceDescription: string | null;
+
+    // Теги навичок під цей тип послуги (free-form, до ~15). Зберігаємо як text[].
+    @Column({ type: 'text', array: true, default: '{}', name: 'experience_skills' })
+    experienceSkills: string[];
+
     @CreateDateColumn({ name: 'created_at' })
     createdAt: Date;
 }

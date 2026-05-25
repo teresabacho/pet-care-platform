@@ -15,9 +15,13 @@ import { ServiceAddonsRepository } from './addons/service-addons.repository';
 import { WalkingPolicy } from './policies/entities/walking-policy.entity';
 import { PetSittingPolicy } from './policies/entities/pet-sitting-policy.entity';
 import { BoardingPolicy } from './policies/entities/boarding-policy.entity';
+import { GroomingPolicy } from './policies/entities/grooming-policy.entity';
+import { VetVisitPolicy } from './policies/entities/vet-visit-policy.entity';
 import {
     BoardingPoliciesRepository,
+    GroomingPoliciesRepository,
     PetSittingPoliciesRepository,
+    VetVisitPoliciesRepository,
     WalkingPoliciesRepository,
 } from './policies/policies.repositories';
 import { ServiceInclusion } from './inclusions/entities/service-inclusion.entity';
@@ -33,6 +37,8 @@ import { ServiceInclusionsRepository } from './inclusions/service-inclusions.rep
             WalkingPolicy,
             PetSittingPolicy,
             BoardingPolicy,
+            GroomingPolicy,
+            VetVisitPolicy,
             ServiceInclusion,
             CaretakerProfile,
         ]),
@@ -48,6 +54,8 @@ import { ServiceInclusionsRepository } from './inclusions/service-inclusions.rep
         WalkingPoliciesRepository,
         PetSittingPoliciesRepository,
         BoardingPoliciesRepository,
+        GroomingPoliciesRepository,
+        VetVisitPoliciesRepository,
         ServiceInclusionsRepository,
     ],
     exports: [
@@ -58,6 +66,8 @@ import { ServiceInclusionsRepository } from './inclusions/service-inclusions.rep
         WalkingPoliciesRepository,
         PetSittingPoliciesRepository,
         BoardingPoliciesRepository,
+        GroomingPoliciesRepository,
+        VetVisitPoliciesRepository,
         ServiceInclusionsRepository,
     ],
 })

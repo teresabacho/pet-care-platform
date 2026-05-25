@@ -1,5 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom'
+import { UserRole } from '@pet-care/shared'
 import { useAuthStore } from '../../store/authStore'
+import { useChatStore } from '../../store/chatStore'
 import { buttonVariants } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -9,11 +11,12 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { Bell, Heart, ChevronDown } from 'lucide-react'
+import { Heart, MessageCircle, ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export default function Header() {
   const { user, isAuthenticated, logout } = useAuthStore()
+  const unreadCount = useChatStore((s) => s.unreadCount)
   const navigate = useNavigate()
 
   const initials = user?.firstName
@@ -28,9 +31,17 @@ export default function Header() {
   return (
     <header className="bg-white border-b border-zinc-200">
       <nav className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-        <Link to="/" className="text-base font-bold text-zinc-900 tracking-tight">
-          PawMate
-        </Link>
+        <div className="flex items-center gap-6">
+          <Link to="/" className="text-base font-bold text-zinc-900 tracking-tight">
+            PawMate
+          </Link>
+          <Link
+            to="/"
+            className="text-sm font-medium text-zinc-600 hover:text-zinc-900 transition-colors"
+          >
+            Знайти доглядальника
+          </Link>
+        </div>
 
         <div className="flex items-center gap-1">
           {isAuthenticated ? (
@@ -45,10 +56,18 @@ export default function Header() {
 
               <Link
                 to="/messages"
-                className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'gap-1.5 text-zinc-600 font-medium')}
+                className={cn(
+                  buttonVariants({ variant: 'ghost', size: 'sm' }),
+                  'gap-1.5 text-zinc-600 font-medium relative',
+                )}
               >
-                <Bell className="w-4 h-4" />
+                <MessageCircle className="w-4 h-4" />
                 Повідомлення
+                {unreadCount > 0 && (
+                  <span className="ml-1 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-zinc-900 text-white text-[10px] font-semibold">
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </span>
+                )}
               </Link>
 
               <DropdownMenu>
@@ -73,6 +92,11 @@ export default function Header() {
                   <DropdownMenuItem onClick={() => navigate('/pets')}>
                     Мої тварини
                   </DropdownMenuItem>
+                  {user?.role === UserRole.CARETAKER && (
+                    <DropdownMenuItem onClick={() => navigate('/settings/caretaker-profile')}>
+                      Профіль виконавця
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     onClick={handleLogout}

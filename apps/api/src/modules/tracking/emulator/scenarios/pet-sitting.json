@@ -1,0 +1,58 @@
+[
+  { "lat": 50.4501, "lng": 30.5234, "speed": 0.2, "altitude": 35 },
+  { "lat": 50.4502, "lng": 30.5234, "speed": 0.1, "altitude": 35 },
+  { "lat": 50.4501, "lng": 30.5235, "speed": 0.2, "altitude": 35 },
+  { "lat": 50.4502, "lng": 30.5233, "speed": 0.1, "altitude": 35 },
+  { "lat": 50.4501, "lng": 30.5234, "speed": 0.2, "altitude": 35 },
+  { "lat": 50.4500, "lng": 30.5234, "speed": 0.1, "altitude": 35 },
+  { "lat": 50.4501, "lng": 30.5235, "speed": 0.2, "altitude": 35 },
+  { "lat": 50.4502, "lng": 30.5234, "speed": 0.1, "altitude": 35 },
+  { "lat": 50.4501, "lng": 30.5233, "speed": 0.2, "altitude": 35 },
+  { "lat": 50.4501, "lng": 30.5234, "speed": 0.1, "altitude": 35 },
+
+  { "action": "start-walk" },
+
+  { "lat": 50.4501, "lng": 30.5234, "speed": 1.2, "altitude": 35 },
+  { "lat": 50.4498, "lng": 30.5232, "speed": 1.3, "altitude": 34 },
+  { "lat": 50.4495, "lng": 30.5230, "speed": 1.4, "altitude": 34 },
+  { "lat": 50.4492, "lng": 30.5228, "speed": 1.3, "altitude": 34 },
+  { "lat": 50.4489, "lng": 30.5226, "speed": 1.5, "altitude": 33 },
+  { "lat": 50.4486, "lng": 30.5224, "speed": 1.4, "altitude": 33 },
+  { "lat": 50.4483, "lng": 30.5222, "speed": 1.3, "altitude": 33 },
+  { "lat": 50.4480, "lng": 30.5220, "speed": 1.5, "altitude": 32 },
+  { "lat": 50.4477, "lng": 30.5218, "speed": 1.4, "altitude": 32 },
+  { "lat": 50.4474, "lng": 30.5216, "speed": 1.3, "altitude": 32 },
+  { "lat": 50.4471, "lng": 30.5214, "speed": 1.4, "altitude": 31 },
+  { "lat": 50.4468, "lng": 30.5212, "speed": 1.5, "altitude": 31 },
+  { "lat": 50.4465, "lng": 30.5210, "speed": 1.3, "altitude": 31 },
+  { "lat": 50.4462, "lng": 30.5208, "speed": 1.4, "altitude": 30 },
+  { "lat": 50.4459, "lng": 30.5206, "speed": 1.3, "altitude": 30 },
+
+  { "action": "end-walk" },
+
+  { "lat": 50.4459, "lng": 30.5206, "speed": 0.2, "altitude": 30 },
+  { "lat": 50.4460, "lng": 30.5207, "speed": 0.1, "altitude": 30 },
+  { "lat": 50.4459, "lng": 30.5205, "speed": 0.2, "altitude": 30 },
+  { "lat": 50.4458, "lng": 30.5206, "speed": 0.1, "altitude": 30 },
+  { "lat": 50.4459, "lng": 30.5207, "speed": 0.2, "altitude": 30 },
+  { "lat": 50.4460, "lng": 30.5206, "speed": 0.1, "altitude": 30 },
+  { "lat": 50.4459, "lng": 30.5205, "speed": 0.2, "altitude": 30 },
+  { "lat": 50.4458, "lng": 30.5207, "speed": 0.1, "altitude": 30 },
+
+  { "action": "start-walk" },
+
+  { "lat": 50.4459, "lng": 30.5206, "speed": 1.3, "altitude": 30 },
+  { "lat": 50.4462, "lng": 30.5209, "speed": 1.4, "altitude": 31 },
+  { "lat": 50.4465, "lng": 30.5212, "speed": 1.5, "altitude": 31 },
+  { "lat": 50.4468, "lng": 30.5215, "speed": 1.4, "altitude": 31 },
+  { "lat": 50.4471, "lng": 30.5218, "speed": 1.6, "altitude": 32 },
+  { "lat": 50.4474, "lng": 30.5221, "speed": 1.5, "altitude": 32 },
+  { "lat": 50.4477, "lng": 30.5224, "speed": 1.4, "altitude": 32 },
+  { "lat": 50.4480, "lng": 30.5227, "speed": 1.5, "altitude": 33 },
+  { "lat": 50.4483, "lng": 30.5230, "speed": 1.6, "altitude": 33 },
+  { "lat": 50.4486, "lng": 30.5233, "speed": 1.5, "altitude": 33 },
+  { "lat": 50.4489, "lng": 30.5236, "speed": 1.4, "altitude": 34 },
+  { "lat": 50.4492, "lng": 30.5239, "speed": 1.5, "altitude": 34 },
+
+  { "action": "end-walk" }
+]

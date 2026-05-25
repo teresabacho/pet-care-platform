@@ -48,6 +48,19 @@ function certificatesStatus(certificates: Certificate[]): SectionStatus {
   return certificates.length > 0 ? 'complete' : 'empty'
 }
 
+function availabilityStatus(profile: CaretakerProfile): SectionStatus {
+  return profile.availabilityUpdatedAt ? 'complete' : 'empty'
+}
+
+function formatHumanDate(value: string | null): string | null {
+  if (!value) return null
+  return new Date(value).toLocaleDateString('uk-UA', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  })
+}
+
 export default function CaretakerProfileDashboard() {
   const navigate = useNavigate()
   const user = useAuthStore((s) => s.user)
@@ -108,6 +121,7 @@ export default function CaretakerProfileDashboard() {
     { key: 'skills', status: skillsStatus(profile) },
     { key: 'services', status: servicesStatus(services) },
     { key: 'certificates', status: certificatesStatus(certificates) },
+    { key: 'availability', status: availabilityStatus(profile) },
   ]
 
   const completedCount = sections.filter((s) => s.status === 'complete').length
@@ -272,6 +286,27 @@ export default function CaretakerProfileDashboard() {
                 </li>
               ))}
             </ul>
+          )}
+        </SectionCard>
+
+        <SectionCard
+          title="Календар доступності"
+          description="Слоти, в які ви готові приймати замовлення"
+          status={availabilityStatus(profile)}
+          actionLabel={
+            availabilityStatus(profile) === 'empty' ? 'Заповнити' : 'Редагувати'
+          }
+          onAction={() => go('availability')}
+        >
+          {profile.availabilityUpdatedAt ? (
+            <p className="text-sm text-zinc-700">
+              Останнє оновлення:{' '}
+              <strong>{formatHumanDate(profile.availabilityUpdatedAt)}</strong>
+            </p>
+          ) : (
+            <p className="text-sm text-zinc-500">
+              Ще не заповнювали — клієнти бачать порожній календар.
+            </p>
           )}
         </SectionCard>
 

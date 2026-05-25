@@ -1,20 +1,30 @@
 import { apiClient } from './api'
-import type { Pet } from '../types'
+import type { Pet, PetDetails } from '../types'
 
 interface CreatePetDto {
   name: string
   species?: string
   breed?: string
   age?: number
+  ageMonths?: number
   weight?: number
+  sex?: string
+  neutered?: string
+  dateAcquired?: string
   description?: string
   photoUrl?: string
   specialNeeds?: string
+  details?: PetDetails
 }
 
 export const petsService = {
   async getMyPets(): Promise<Pet[]> {
     const { data } = await apiClient.get<Pet[]>('/pets')
+    return data
+  },
+
+  async getById(id: string): Promise<Pet> {
+    const { data } = await apiClient.get<Pet>(`/pets/${id}`)
     return data
   },
 
