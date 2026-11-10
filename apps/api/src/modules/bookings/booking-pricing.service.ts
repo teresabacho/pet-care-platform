@@ -127,18 +127,19 @@ function getDayType(date: Date): DayType {
     return DayType.REGULAR;
 }
 
-// Повертає масив дат від start до end включно, кожна — на 00:00 локального
-// часу, щоб порівняння днів працювало правильно навіть коли booking
-// перекидає через північ.
+// Повертає по одній даті на кожну розпочату добу (24 год) booking-а, починаючи
+// з дати start — та сама кількість днів, що й ceil(ms / 24h) у addonMultiplier
+// та в клієнтському розрахунку. Дати — на 00:00 локального часу, щоб DayType
+// визначався за календарним днем, у який починається кожна доба.
 function listDaysInRange(start: Date, end: Date): Date[] {
+    const ms = end.getTime() - start.getTime();
+    const count = Math.max(1, Math.ceil(ms / (24 * 60 * 60 * 1000)));
     const result: Date[] = [];
     const cursor = new Date(start.getFullYear(), start.getMonth(), start.getDate());
-    const last = new Date(end.getFullYear(), end.getMonth(), end.getDate());
-    while (cursor.getTime() <= last.getTime()) {
+    for (let i = 0; i < count; i++) {
         result.push(new Date(cursor));
         cursor.setDate(cursor.getDate() + 1);
     }
-    if (result.length === 0) result.push(new Date(start));
     return result;
 }
 
