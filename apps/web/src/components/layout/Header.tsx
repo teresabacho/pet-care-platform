@@ -74,7 +74,7 @@ export default function Header() {
                 <DropdownMenuTrigger
                   className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'gap-2 font-medium')}
                 >
-                  <Avatar size="sm">
+                  <Avatar className="size-6">
                     <AvatarFallback className="text-xs bg-zinc-900 text-white">
                       {initials}
                     </AvatarFallback>

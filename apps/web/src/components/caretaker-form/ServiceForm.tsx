@@ -453,6 +453,7 @@ export function ServiceForm({
           durationMinutes: next === ServiceType.WALKING ? 60 : null,
           basePrice: null,
           priceUnit: DEFAULT_PRICE_UNIT[next],
+          dayType: DayType.REGULAR,
         },
       ],
     })

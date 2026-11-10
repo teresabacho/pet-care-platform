@@ -1,7 +1,7 @@
 import axios from 'axios'
 import { apiClient } from './api'
 import type { MediaItem } from '../types'
-import type { MediaOwnerType, MediaType } from '@pet-care/shared'
+import { MediaType, type MediaOwnerType } from '@pet-care/shared'
 
 interface PresignedUploadResponse {
   mediaItem: MediaItem
@@ -50,7 +50,7 @@ export const mediaService = {
       {
         ownerType,
         ownerId,
-        mediaType: 'VIDEO' satisfies MediaType,
+        mediaType: MediaType.VIDEO,
         mimeType: file.type,
         sizeBytes: file.size,
       },

@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { Upload, X, Loader2 } from 'lucide-react'
+import { Upload, Loader2 } from 'lucide-react'
 import type { MediaOwnerType } from '@pet-care/shared'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'

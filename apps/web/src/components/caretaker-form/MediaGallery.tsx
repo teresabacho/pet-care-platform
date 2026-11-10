@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { ArrowDown, ArrowUp, ImagePlus, Loader2, Trash2 } from 'lucide-react'
 import { MediaOwnerType } from '@pet-care/shared'
-import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { mediaService } from '../../services/media.service'
 import type { MediaItem } from '../../types'

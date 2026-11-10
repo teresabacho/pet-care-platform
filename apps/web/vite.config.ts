@@ -17,4 +17,11 @@ export default defineConfig({
     // After adding new exports to shared, restart with `pnpm run dev --force`.
     include: ['@pet-care/shared'],
   },
+  build: {
+    commonjsOptions: {
+      // Same interop for production: the linked workspace package resolves
+      // outside node_modules, so Rollup's CJS plugin must be told to include it.
+      include: [/packages[\\/]shared[\\/]/, /node_modules/],
+    },
+  },
 })
